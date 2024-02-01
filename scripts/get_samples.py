@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-parent_dir = 'out/references/parents'
-os.makedirs(parent_dir, exist_ok=True)
+PARENTDIR = 'out/references/parents'
+os.makedirs(PARENTDIR, exist_ok=True)
 DEFAULT_MINREPS = 3
 
 def get_name(filename):
@@ -20,7 +20,7 @@ def get_first_parent(filename):
             raise Exception(f"First line of {filename} does not start with '>'")
         else:
             parent_name = first_line[1:].strip().split()[0]
-            parent_file = os.path.join(parent_dir, parent_name + '.fa')
+            parent_file = os.path.join(PARENTDIR, parent_name + '.fa')
             with open(parent_file, 'w') as p:
                 p.write(first_line)
                 for line in f:
@@ -84,10 +84,12 @@ def get_command_options(config):
             samples[col] = get_name(config[rep])
         else:
             samples[col] = config[col]
+    
+    if 'min_reps' in config:
+        samples['min_reps'] = config['min_reps']
 
 
     return pd.DataFrame(samples, index=[0])
-    
 
 #### sanity checks on data ####
 def check_data(samples):
@@ -138,20 +140,22 @@ def check_data(samples):
     if 'min_reps' not in samples.columns:
         samples['min_reps'] = [None]*len(samples)
     for i, row in samples.iterrows():
+        import pdb; pdb.set_trace()
         if row['seq_tech'] == 'np-cc':
             if row['min_reps'] is None or pd.isnull(row['min_reps']):
                 samples.loc[i, 'min_reps'] = DEFAULT_MINREPS
             elif row['min_reps'] < 0:
                 raise Exception("Minimum reps (column 'min_reps') must be at least 0")
 
+def get_samples(config):
 
-# read sample csv file
-if 'samples' not in config:
-    samples = get_command_options(config)
-else:   
-    samples = pd.read_csv(config['samples'])
-    
+    # read sample csv file
+    if 'samples' not in config:
+        samples = get_command_options(config)
+    else:   
+        samples = pd.read_csv(config['samples'])
+        
+    # do checks
+    check_data(samples)
 
-check_data(samples)
-
-print(samples)
+    return(samples)

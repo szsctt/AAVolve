@@ -1,0 +1,6 @@
+name: base
+channels:
+  - conda-forge
+dependencies:
+  - pytest=7.4
+  - pandas=2.0
