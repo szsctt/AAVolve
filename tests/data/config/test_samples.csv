@@ -1,0 +1,3 @@
+sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file
+np-aav2-test,aav2,aav2,np,3,tests/data/reads/np-aav2.fastq,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa
+np-cc-aav2-test,aav2,aav2,np-cc,3,tests/data/reads/np-cc-aav2.fastq,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa
