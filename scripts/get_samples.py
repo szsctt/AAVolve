@@ -4,6 +4,9 @@ import pandas as pd
 PARENTDIR = 'out/references/parents'
 os.makedirs(PARENTDIR, exist_ok=True)
 DEFAULT_MINREPS = 3
+REQUIRED_COLUMNS =  ('sample_name', 'parent_name', 'reference_name', 'seq_tech', 'read_file', 'parent_file', 'reference_file')
+SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi']
+
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -95,14 +98,13 @@ def get_command_options(config):
 def check_data(samples):
 
     # required columns: sample_name, parent_name, reference_name, seq_tech, read_file, parent_file, reference_file
-    required_columns = ('sample_name', 'parent_name', 'reference_name', 'seq_tech', 'read_file', 'parent_file', 'reference_file')
-    for col in required_columns:
+    for col in REQUIRED_COLUMNS:
         # check that all required columns are present
         if col not in samples.columns:
-            raise Exception("Missing required column: {}".format(col))
+            raise Exception(f"Missing required column: {col}")
         # check that all required columns are non-empty
         if samples[col].isnull().any():
-            raise Exception("Missing value in column: {}".format(col))
+            raise Exception(f"Missing value in column: {col}")
 
     # check that all sample files exist
     for read_file in set(samples['read_file']):
@@ -121,6 +123,9 @@ def check_data(samples):
     # check that the same parent name always correpsonds to the same parent file
     if len(samples.groupby(['parent_name', 'parent_file'])) != len(samples.groupby('parent_name')):
         raise Exception("Each parent name (column 'parent_name') must always correspond to the same parent file (column 'parent_file')")
+    if len(samples.groupby(['parent_name', 'parent_file'])) != len(samples.groupby('parent_file')):
+        raise Exception("Each parent name (column 'parent_name') must always correspond to the same parent file (column 'parent_file')")
+
 
     # check that all reference files exist
     for reference_file in set(samples['reference_file']):
@@ -130,22 +135,30 @@ def check_data(samples):
     #check that the same reference name always corresponds to the same parent file
     if len(samples.groupby(['reference_name', 'reference_file'])) != len(samples.groupby('reference_name')):
         raise Exception("Each reference name (column 'reference_name') must always correspond to the same reference file (column 'reference_file')")
+    if len(samples.groupby(['reference_name', 'reference_file'])) != len(samples.groupby('reference_file')):
+        raise Exception("Each reference name (column 'reference_name') must always correspond to the same reference file (column 'reference_file')")
 
-    # check that sequencing technology is either 'np', 'np-cc' or 'pb'
-    if not set(samples['seq_tech']).issubset(set(['np', 'np-cc', 'pb'])):
-        raise Exception("Sequencing technology (column 'seq_tech') must be one of 'np', 'np-cc' or 'pb'")
+
+    # check that sequencing technology is either 'np', 'np-cc', 'pb' or 'pb-hifi'
+    if not set(samples['seq_tech']).issubset(set(SEQ_TECHS)):
+        techs = [f"'{s}'" for s in SEQ_TECHS]
+        techs = ', '.join(techs)
+        raise Exception(f"Sequencing technology (column 'seq_tech') must be one of {techs}")
 
 
     # for nanopore-cc, if minimum reps isn't specified, set to default value
     if 'min_reps' not in samples.columns:
         samples['min_reps'] = [None]*len(samples)
     for i, row in samples.iterrows():
-        import pdb; pdb.set_trace()
         if row['seq_tech'] == 'np-cc':
             if row['min_reps'] is None or pd.isnull(row['min_reps']):
                 samples.loc[i, 'min_reps'] = DEFAULT_MINREPS
             elif row['min_reps'] < 0:
                 raise Exception("Minimum reps (column 'min_reps') must be at least 0")
+        else:
+            samples.loc[i, 'min_reps'] = None
+
+    return samples
 
 def get_samples(config):
 
@@ -156,6 +169,6 @@ def get_samples(config):
         samples = pd.read_csv(config['samples'])
         
     # do checks
-    check_data(samples)
+    samples = check_data(samples)
 
     return(samples)
