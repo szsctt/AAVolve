@@ -67,7 +67,7 @@ RUN apt-get update && apt install -y \
 
 RUN mkdir -p deps/ C3POa/blat
 COPY --from=pybuilder C3POa C3POa
-COPY --from=blat-builder /opt/conda/bin/blat C3POa/blat/
+COPY --from=blat-downloader /opt/conda/bin/blat C3POa/blat/
 COPY --from=racon-builder /racon/build/bin/racon deps/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
