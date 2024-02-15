@@ -1,2 +1,4 @@
 .snakemake
 **/__pycache__
+out
+.snakemake
