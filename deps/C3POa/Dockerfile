@@ -55,7 +55,7 @@ RUN git clone https://github.com/christopher-vollmers/C3POa.git
 FROM python:3.7-slim
 
 RUN apt-get update && apt install -y \
-        pigz wget \
+        pigz wget libcurl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p deps/ C3POa/blat
