@@ -25,14 +25,7 @@ RUN cd racon &&\
 mkdir build &&\
 cd build &&\
 cmake -DCMAKE_BUILD_TYPE=Release .. &&\
-make
-
-# blat
-FROM mambaorg/micromamba:1.5.6 as blat-downloader
-
-RUN micromamba install -n base -c conda-forge -c bioconda blat -y &&\
-    micromamba clean --all --yes
-    
+make    
     
 # conk, python and C3POa
 FROM python:3.7 as pybuilder
@@ -67,12 +60,11 @@ RUN apt-get update && apt install -y \
 
 RUN mkdir -p deps/ C3POa/blat
 COPY --from=pybuilder C3POa C3POa
-COPY --from=blat-downloader /opt/conda/bin/* C3POa/blat/
 COPY --from=racon-builder /racon/build/bin/racon deps/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
 #COPY --from=pybuilder /root/.local /root/.local
-COPY --from=pybuilder C3POa C3POa
+RUN wget -O C3POa/blat/blat http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat
 ENV PATH="${PATH}:/deps/:C3POa/blat"
 
 RUN pip install --no-cache-dir deps/conk-1.0.0-cp37-cp37m-linux_x86_64.whl
