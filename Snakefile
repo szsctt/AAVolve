@@ -1,2 +1,6 @@
+from scripts.get_samples import get_samples
 
-include: 'rules/get_samples.smk'
+samples = get_samples(config)
+
+
+include: 'rules/consensus.smk'

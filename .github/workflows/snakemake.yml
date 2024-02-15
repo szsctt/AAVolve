@@ -1,0 +1,24 @@
+name: snakemake
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  snakemake:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      - 
+        name: Testing
+        uses: snakemake/snakemake-github-action@v1
+        args: '--cores 1 --use-conda --conda-cleanup-pkgs cache --config samples=tests/data/config/test_samples.csv'
+        show-disk-usage-on-error: true
