@@ -20,5 +20,6 @@ jobs:
       - 
         name: Testing
         uses: snakemake/snakemake-github-action@v1
-        args: '--cores 1 --use-conda --conda-cleanup-pkgs cache --config samples=tests/data/config/test_samples.csv'
-        show-disk-usage-on-error: true
+        with:
+          args: '--cores 1 --use-conda --conda-cleanup-pkgs cache --config samples=tests/data/config/test_samples.csv'
+          show-disk-usage-on-error: true
