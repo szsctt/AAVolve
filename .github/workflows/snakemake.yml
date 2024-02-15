@@ -22,5 +22,6 @@ jobs:
         uses: snakemake/snakemake-github-action@v1
         with:
           directory: '.'
+          snakefile: 'Snakefile'
           args: '--cores 1 --use-conda --conda-cleanup-pkgs cache --config samples=tests/data/config/test_samples.csv'
           show-disk-usage-on-error: true
