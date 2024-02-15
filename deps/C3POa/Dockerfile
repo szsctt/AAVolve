@@ -64,7 +64,7 @@ RUN apt-get update && apt install -y \
         pigz \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir deps/ C3POa/blat
+RUN mkdir -p deps/ C3POa/blat
 COPY --from=pybuilder C3POa C3POa
 COPY --from=blat-builder /root/bin/x86_64/blat C3POa/blat/
 COPY --from=blat-builder /racon/build/bin/racon deps/
