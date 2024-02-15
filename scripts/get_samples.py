@@ -81,7 +81,9 @@ def get_command_options(config):
         samples['seq_tech'] = config['seq_tech']
 
     # for seq_tech = np-cc, need to specify splint file
-    if 'splint_file' not in config and config['seq_tech'] == 'np-cc':
+    if 'splint_file' not in config:
+        config['splint_file'] = None
+    if config['seq_tech'] == 'np-cc' and config['splint_file'] is None:
         raise Exception("Please include the command line argument --config splint_file=<path to splint file>")
     else:
         samples['splint_file'] = config['splint_file']

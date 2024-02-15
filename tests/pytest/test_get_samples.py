@@ -114,21 +114,24 @@ class TestGetCommandOptions:
     @pytest.mark.parametrize("read_file", (None, 'tests/data/reads/np-aav2.fastq'))
     @pytest.mark.parametrize("parent_file", (None, 'tests/data/references/wtAAV2.fa'))
     @pytest.mark.parametrize("reference_file", (None, 'tests/data/references/wtAAV2.fa'))
-    def test_get_command_options(self, sample_name, parent_name, reference_name, seq_tech, min_reps, read_file, parent_file, reference_file):
+    @pytest.mark.parametrize("splint_file", (None, 'tests/data/references/splint.fa'))
+    def test_get_command_options(self, sample_name, parent_name, reference_name, seq_tech, min_reps, read_file, parent_file, reference_file, splint_file):
 
 
         # create input config
         config = {}
-        for k, v in zip(['sample_name', 'parent_name', 'reference_name', 'seq_tech', 'min_reps', 'read_file', 'parent_file', 'reference_file'], 
-                        [sample_name, parent_name, reference_name, seq_tech, min_reps, read_file, parent_file, reference_file]):
+        for k, v in zip(['sample_name', 'parent_name', 'reference_name', 'seq_tech', 'min_reps', 'read_file', 'parent_file', 'reference_file', 'splint_file'], 
+                        [sample_name, parent_name, reference_name, seq_tech, min_reps, read_file, parent_file, reference_file, splint_file]):
             if v is not None:
                 config[k] = v
 
         # we expect a fail if any of read_file, parent_file or seq_tech are missing
-        if 'read_file' in config and 'parent_file' in config and 'seq_tech' in config:
-            expect_fail = False
-        else:
+        expect_fail = False
+        if 'read_file' not in config or 'parent_file' not in config or 'seq_tech' not in config:
             expect_fail = True
+        if seq_tech == 'np-cc' and 'splint_file' not in config:
+            expect_fail = True
+
 
         # inputs
         if expect_fail:
@@ -298,6 +301,9 @@ class TestCheckData(Fixtures):
         # change seq tech
         sample_df['seq_tech'] = seq_tech
 
+        if seq_tech == 'np-cc':
+            sample_df['splint_file'] = 'tests/data/references/splint.fa'
+
         # should not raise
         check_data(sample_df)
 
@@ -323,6 +329,9 @@ class TestCheckData(Fixtures):
 
         # add min reps
         sample_df['seq_tech'] = seq_tech
+        
+        if seq_tech == 'np-cc':
+            sample_df['splint_file'] = ['tests/data/references/splint.fa']
 
         # should not raise
         check_data(sample_df)
@@ -342,6 +351,8 @@ class TestCheckData(Fixtures):
         # change min reps
         sample_df['seq_tech'] = seq_tech
         sample_df['min_reps'] = -1
+        if seq_tech == 'np-cc':
+            sample_df['splint_file'] = ['tests/data/references/splint.fa']
 
         # if seq_tech is np-cc, should raise
         if seq_tech == 'np-cc':
@@ -362,6 +373,8 @@ class TestCheckData(Fixtures):
         # change min reps
         sample_df['seq_tech'] = seq_tech
         sample_df['min_reps'] = None
+        if seq_tech == 'np-cc':
+            sample_df['splint_file'] = ['tests/data/references/splint.fa']
 
         # should not raise
         check_data(sample_df)
@@ -370,6 +383,39 @@ class TestCheckData(Fixtures):
             assert sample_df['min_reps'][0] == DEFAULT_MINREPS
         else:
             assert sample_df['min_reps'][0] is None
+
+    def test_check_data_np_cc_splint(self, config):
+        """
+        Check that an exception is raised if splint file is not specified for np-cc
+        """
+
+        # change seq tech
+        config['seq_tech'] = 'np-cc'
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(pd.DataFrame([config]))
+        assert error.value.args[0] == "For sequencing technology 'np-cc', must specify splint file (column 'splint_file')"
+
+    def test_check_data_np_cc_splint_exists(self, config):
+
+        # change seq tech
+        config['seq_tech'] = 'np-cc'
+        config['splint_file'] = 'tests/data/references/splint.fa'
+
+        # should not raise
+        check_data(pd.DataFrame([config]))
+
+    def test_check_data_np_cc_splint_missing_file(self, config):
+
+        # change seq tech
+        config['seq_tech'] = 'np-cc'
+        config['splint_file'] = 'nonexistentfile'
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(pd.DataFrame([config]))
+        assert error.value.args[0] == "Splint file does not exist: nonexistentfile"
 
 class TestGetSamples(Fixtures):
 
@@ -400,6 +446,8 @@ class TestGetSamples(Fixtures):
         with tempfile.NamedTemporaryFile(mode='w+t', suffix='.csv') as f:
         
             config['seq_tech'] = seq_tech
+            if seq_tech == 'np-cc':
+                config['splint_file'] = 'tests/data/references/splint.fa'
             expected_samples = pd.DataFrame([config])
             expected_samples.to_csv(f.name, index=False)
 
