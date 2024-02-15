@@ -60,13 +60,14 @@ RUN apt-get update && apt install -y \
 
 RUN mkdir -p deps/ C3POa/blat C3POa/racon/build/bin/
 COPY --from=pybuilder C3POa C3POa
+RUN chmod +x C3POa/C3POa.py
 COPY --from=racon-builder /racon/build/bin/racon C3POa/racon/build/bin/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
 #COPY --from=pybuilder /root/.local /root/.local
 RUN wget -O C3POa/blat/blat http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat &&\
     chmod +x C3POa/blat/blat
-ENV PATH="${PATH}:/deps/:C3POa/blat:C3POa/racon/build/bin/"
+ENV PATH="${PATH}:/deps/:C3POa/blat:C3POa/racon/build/bin/:C3POa"
 
 RUN pip install --no-cache-dir deps/conk-1.0.0-cp37-cp37m-linux_x86_64.whl
 RUN pip install --no-cache-dir deps/wheels/*
