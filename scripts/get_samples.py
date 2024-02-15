@@ -80,6 +80,12 @@ def get_command_options(config):
     else:
         samples['seq_tech'] = config['seq_tech']
 
+    # for seq_tech = np-cc, need to specify splint file
+    if 'splint_file' not in config and config['seq_tech'] == 'np-cc':
+        raise Exception("Please include the command line argument --config splint_file=<path to splint file>")
+    else:
+        samples['splint_file'] = config['splint_file']
+
     # optional options
     optional = {'sample_name':'read_file', 'parent_name':'parent_file', 'reference_name':'reference_file'}
     for col, rep in optional.items():
@@ -144,6 +150,14 @@ def check_data(samples):
         techs = [f"'{s}'" for s in SEQ_TECHS]
         techs = ', '.join(techs)
         raise Exception(f"Sequencing technology (column 'seq_tech') must be one of {techs}")
+    
+    #for 'nanopore-cc', must specify splint file
+    for i, row in samples.iterrows():
+        if row['seq_tech'] == 'np-cc':
+            if 'splint_file' not in row or pd.isnull(row['splint_file']):
+                raise Exception("For sequencing technology 'np-cc', must specify splint file (column 'splint_file')")
+            elif not os.path.isfile(row['splint_file']):
+                raise Exception(f"Splint file does not exist: {row['splint_file']}")
 
 
     # for nanopore-cc, if minimum reps isn't specified, set to default value
