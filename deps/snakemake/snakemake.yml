@@ -1,4 +1,4 @@
-name: base
+name: snakemake
 channels:
   - conda-forge
   - bioconda
