@@ -64,7 +64,8 @@ COPY --from=racon-builder /racon/build/bin/racon deps/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
 #COPY --from=pybuilder /root/.local /root/.local
-RUN wget -O C3POa/blat/blat http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat
+RUN wget -O C3POa/blat/blat http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat &&\
+    chmod +x C3POa/blat/blat
 ENV PATH="${PATH}:/deps/:C3POa/blat"
 
 RUN pip install --no-cache-dir deps/conk-1.0.0-cp37-cp37m-linux_x86_64.whl
