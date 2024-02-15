@@ -19,12 +19,6 @@ FROM ubuntu:20.04 as racon-builder
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt install build-essential wget unzip libpng-dev git cmake -y
-RUN wget https://users.soe.ucsc.edu/~kent/src/blatSrc35.zip
-RUN unzip blatSrc35.zip
-RUN export MACHTYPE='x86_64' &&\
-    cd blatSrc &&\
-    mkdir -p  ~/bin/$MACHTYPE && \
-    make
 
 RUN git clone --recursive https://github.com/isovic/racon.git racon
 RUN cd racon &&\
@@ -33,6 +27,7 @@ cd build &&\
 cmake -DCMAKE_BUILD_TYPE=Release .. &&\
 make
 
+# blat
 FROM mambaorg/micromamba:1.5.6 as blat-downloader
 
 RUN micromamba install -n base -c conda-forge -c bioconda blat -y &&\
