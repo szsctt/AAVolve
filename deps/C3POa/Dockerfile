@@ -13,8 +13,8 @@
 #ARG MAMBA_DOCKERFILE_ACTIVATE=1
 #RUN pip install pyabpoa==1.4 editdistance
 
-# blat and racon
-FROM ubuntu:20.04 as blat-builder
+# racon
+FROM ubuntu:20.04 as racon-builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -33,6 +33,12 @@ cd build &&\
 cmake -DCMAKE_BUILD_TYPE=Release .. &&\
 make
 
+FROM mambaorg/micromamba:1.5.6 as blat-downloader
+
+RUN micromamba install -n base -c conda-forge -c bioconda blat -y &&\
+    micromamba clean --all --yes
+    
+    
 # conk, python and C3POa
 FROM python:3.7 as pybuilder
 
@@ -66,8 +72,8 @@ RUN apt-get update && apt install -y \
 
 RUN mkdir -p deps/ C3POa/blat
 COPY --from=pybuilder C3POa C3POa
-COPY --from=blat-builder /root/bin/x86_64/blat C3POa/blat/
-COPY --from=blat-builder /racon/build/bin/racon deps/
+COPY --from=blat-builder /opt/conda/bin/blat C3POa/blat/
+COPY --from=racon-builder /racon/build/bin/racon deps/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
 #COPY --from=pybuilder /root/.local /root/.local
