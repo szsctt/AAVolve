@@ -41,3 +41,14 @@ rule filter_consensus:
         """
         python3 -m scripts.filter_consensus_by_repeats -i {input.fasta} -o {output.filt} --min-repeats {params.n_filt}
         """
+
+rule count_repeats:
+    input:
+        fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+    output:
+        counts = "out/c3poa/{sample}/repeat_counts.tsv"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m scripts.count_repeats -i {input.fasta} -o {output.counts}
+        """
