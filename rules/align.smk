@@ -34,11 +34,29 @@ def get_reads(wildcards):
     # otherwise, just return reads
     return get_column_by_sample(wildcards, samples, 'read_file')
 
+def get_reference(wildcards):
+    """
+    Get appropriate reference for wildcards.sample
+    Either parental references,
+    or just the reference otherwise
+    """
+    # make a dictionary of parents
+    parents = {}
+    for k, v in zip(samples['parent_name'], samples['reference_file']):
+        parents[k] = v
+    
+    # if one of the parents, return parent sequences
+    if wildcards.sample in parents.keys():
+        return parents[wildcards.sample]
+    
+    # otherwise, just return reference
+    return get_column_by_sample(wildcards, samples, 'reference_file')
+
 # map to one of the parental references.  The choice of reference is arbitrary
 rule align:
     input:
         reads = get_reads,
-        reference = lambda wildcards: get_column_by_sample(wildcards, samples, 'reference_file')
+        reference = get_reference
     output:
         aligned = "out/aligned/{sample}.bam",
         idx = "out/aligned/{sample}.bam.bai",
