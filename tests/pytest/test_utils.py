@@ -55,3 +55,14 @@ class TestSeqGenerator:
         with tempfile.NamedTemporaryFile(mode='w+t') as temp:
             with open(temp.name, 'r') as handle:
                 assert list(seq_generator(handle)) == []
+
+
+class TestSubstituion:
+    pass
+
+
+class TestInsertion:
+    pass
+
+class TestDeletion:
+    pass
