@@ -8,24 +8,6 @@ import pandas as pd
 from scripts.get_samples import PARENTDIR, DEFAULT_MINREPS, REQUIRED_COLUMNS, SEQ_TECHS
 from scripts.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
-class Fixtures:
-
-    @pytest.fixture
-    def config(self):
-        return {
-            'sample_name': 'sample1',
-            'parent_name': 'aavs',
-            'reference_name': 'AAV2',
-            'seq_tech': 'np',
-            'read_file': 'tests/data/reads/np-aav2.fastq',
-            'parent_file': 'tests/data/references/AAV2_AAV3.fa',
-            'reference_file': 'tests/data/references/wtAAV2.fa'
-        }
-    
-    @pytest.fixture 
-    def sample_df(self, config):
-
-        return pd.DataFrame([config])
 
 class TestGetName:
     
@@ -167,7 +149,7 @@ class TestGetCommandOptions:
         if 'reference_file' not in config:
             os.remove(expected_config['reference_file'])
 
-class TestCheckData(Fixtures):
+class TestCheckData:
     
     def test_check_data(self, sample_df):
         """
@@ -417,7 +399,7 @@ class TestCheckData(Fixtures):
             check_data(pd.DataFrame([config]))
         assert error.value.args[0] == "Splint file does not exist: nonexistentfile"
 
-class TestGetSamples(Fixtures):
+class TestGetSamples:
 
     def test_get_samples_from_command_line(self, config):
         """
