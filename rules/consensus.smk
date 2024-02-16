@@ -50,5 +50,5 @@ rule count_repeats:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.count_repeats -i {input.fasta} -o {output.counts}
+        python3 -m scripts.count_RCA_repeats -i {input.fasta} -o {output.counts}
         """
