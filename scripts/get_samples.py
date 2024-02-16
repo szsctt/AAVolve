@@ -133,7 +133,10 @@ def check_data(samples):
         raise Exception("Each parent name (column 'parent_name') must always correspond to the same parent file (column 'parent_file')")
     if len(samples.groupby(['parent_name', 'parent_file'])) != len(samples.groupby('parent_file')):
         raise Exception("Each parent name (column 'parent_name') must always correspond to the same parent file (column 'parent_file')")
-
+    
+    # check that none of the parent names are the same as the sample names
+    if len(set(samples['sample_name']).intersection(set(samples['parent_name']))) > 0:
+        raise Exception("Sample names (column 'sample_name') must be different from parent names (column 'parent_name')")
 
     # check that all reference files exist
     for reference_file in set(samples['reference_file']):
@@ -145,7 +148,13 @@ def check_data(samples):
         raise Exception("Each reference name (column 'reference_name') must always correspond to the same reference file (column 'reference_file')")
     if len(samples.groupby(['reference_name', 'reference_file'])) != len(samples.groupby('reference_file')):
         raise Exception("Each reference name (column 'reference_name') must always correspond to the same reference file (column 'reference_file')")
-
+    
+    # check that none of the reference names are the same as the sample names
+    if len(set(samples['sample_name']).intersection(set(samples['reference_name']))) > 0:
+        raise Exception("Sample names (column 'sample_name') must be different from reference names (column 'reference_name')")
+    # check that none of the reference names are the same as the parent names
+    if len(set(samples['parent_name']).intersection(set(samples['reference_name']))) > 0:
+        raise Exception("Parent names (column 'parent_name') must be different from reference names (column 'reference_name')")
 
     # check that sequencing technology is either 'np', 'np-cc', 'pb' or 'pb-hifi'
     if not set(samples['seq_tech']).issubset(set(SEQ_TECHS)):

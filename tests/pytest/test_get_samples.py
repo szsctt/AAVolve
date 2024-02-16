@@ -274,6 +274,42 @@ class TestCheckData:
 
         assert error.value.args[0] =="Each parent name (column 'parent_name') must always correspond to the same parent file (column 'parent_file')"
 
+    def test_check_data_sample_parent_names(self, sample_df):
+        """
+        Check that an exception is raised if sample names are the same as parent names
+        """
+
+        # same parent name as sample name
+        sample_df['parent_name'] = sample_df['sample_name']
+
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == "Sample names (column 'sample_name') must be different from parent names (column 'parent_name')"
+
+    def test_check_data_sample_reference_names(self, sample_df):
+        """
+        Check that an exception is raised if sample names are the same as reference names
+        """
+
+        # same reference name as sample name
+        sample_df['reference_name'] = sample_df['sample_name']
+
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == "Sample names (column 'sample_name') must be different from reference names (column 'reference_name')"
+
+    def test_check_data_parent_reference_names(self, sample_df):
+        """
+        Check that an exception is raised if parent names are the same as reference names
+        """
+
+        # same reference name as parent name
+        sample_df['reference_name'] = sample_df['parent_name']
+
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == "Parent names (column 'parent_name') must be different from reference names (column 'reference_name')"
+
     @pytest.mark.parametrize("seq_tech", SEQ_TECHS)
     def test_check_data_seq_tech_exists(self, sample_df, seq_tech):
         """
