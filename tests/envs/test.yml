@@ -1,6 +1,10 @@
-name: base
+name: aavolve_test
 channels:
   - conda-forge
+  - bioconda
 dependencies:
   - pytest=7.4
   - pandas=2.0
+  - pysam=0.22
+  - biopython=1.81
+  - tqdm
