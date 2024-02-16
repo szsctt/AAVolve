@@ -5,7 +5,7 @@
 import argparse
 from sys import argv
 
-from scripts.utils import use_open, get_repeats_from_r2c2_name
+from scripts.utils import use_open, get_repeats_from_r2c2_name, seq_generator
 
 def main(argv):
 
@@ -27,24 +27,10 @@ def filter(infile, outfile, min_repeats):
     with use_open(infile, 'rt') as in_f, use_open(outfile, 'wt') as out_f:
         for name, seq in seq_generator(in_f):
             # check number of repeats
-            repeats = int(name.split('_')[-2])
+            repeats = get_repeats_from_r2c2_name(name)
             # write to output file if repeats >= min_repeats
             if repeats >= min_repeats:
                out_f.write(f'{name}\n{seq}\n')
-
-def seq_generator(handle):
-    """Generator that yields a sequence and its name from a FASTA file"""
-    name, seq = '', ''
-    for line in handle:
-        if line.startswith('>'):
-            if name != '':
-                yield name, seq
-            name = line.strip()
-            seq = ''
-        else:
-            seq = seq + line.strip()
-    if name != '':
-        yield name, seq
         
 
 if __name__ == '__main__':

@@ -12,4 +12,22 @@ def use_open(filename, *args, **kwargs):
     
 def get_repeats_from_r2c2_name(name):
 
-    return int(name.split('_')[-2])
+    try:
+        rep = int(name.split('_')[-2])
+    except:
+        raise ValueError(f"Can't get number of repeats from read '{name}'")
+    return rep
+
+def seq_generator(handle):
+    """Generator that yields a sequence and its name from a FASTA file"""
+    name, seq = '', ''
+    for line in handle:
+        if line.startswith('>'):
+            if name != '':
+                yield name, seq
+            name = line.strip()
+            seq = ''
+        else:
+            seq = seq + line.strip()
+    if name != '':
+        yield name, seq
