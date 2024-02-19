@@ -20,7 +20,7 @@ def samfile_non_existent():
 
 @pytest.fixture
 def samfile_aav2():
-    return "tests/data/aln/aav2.bam"
+    return "tests/data/aln/aav2_N496D.bam"
 
 @pytest.fixture
 def resultfile_aav2():
@@ -465,7 +465,7 @@ def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after,
         get_all_variants(samfile, reffile, outfile.name, start_before, end_after, smaller_output, aa_isolation)
 
         # read results
-        outfile.file.seek(0)
+        outfile.seek(0)
         results = outfile.file.readlines()
 
     # read expected results

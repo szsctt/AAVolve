@@ -49,7 +49,7 @@ def main():
   get_all_variants(args.i, args.r, args.o, args.must_start_before, args.must_end_after, args.smaller_output, args.aa_change_in_isolation)
   
 
-def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_after, smaller_output, aa_isolation)
+def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_after, smaller_output, aa_isolation):
 
   # check that index exists for samfile
   check_index_exists(samfile)
