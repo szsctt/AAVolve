@@ -89,8 +89,9 @@ class Substitution:
     """
     Line for printing to file / stdout
     """
+    assert query_name is not None
 
-    if ref_name is None:
+    if ref_name is None :
       fields = [query_name, self.zero_pos(), self.refbases(), self.qbases(), self.changes_aa]
       
     else:
@@ -139,7 +140,7 @@ class Substitution:
     """
     Test for equality
     """
-    
+
     return str(self) == str(other)
   
   def __hash__(self):
