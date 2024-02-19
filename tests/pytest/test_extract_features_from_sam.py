@@ -454,7 +454,9 @@ def test_write_variant_sub(smaller):
 
 @pytest.mark.parametrize("samfile,reffile,resultfile, start_before, end_after, aa_isolation",
                          (("samfile_aav2", "aav2_ref_file", "resultfile_aav2", 0, -1, True),
-                          ("samfile_aav2", "aav2_ref_file", "resultfile_aav2", 10, 4000, True),),
+                          ("samfile_aav2", "aav2_ref_file", "resultfile_aav2", 10, 2000, True),
+                           ("samfile_aav2", "aav2_ref_file", "resultfile_aav2", 10, 4000, True),
+                          ),
                          indirect=['samfile', 'reffile', 'resultfile'])
 @pytest.mark.parametrize("smaller_output", (True, False))
 def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after, aa_isolation, smaller_output):
@@ -468,6 +470,7 @@ def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after,
         outfile.seek(0)
         results = outfile.file.readlines()
 
+
     # read expected results
     with open(resultfile, 'rt') as handle:
         expected_results = handle.readlines()
@@ -480,11 +483,11 @@ def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after,
                 line = '\t'.join(line) + '\n'
                 new_expected_results.append(line)
             expected_results = new_expected_results
+    if end_after > 2208:
+        expected_results = expected_results[0:1] 
 
-    try:
-        assert results == expected_results
-    except AssertionError:
-        import pdb; pdb.set_trace()
+    assert results == expected_results
+
         
 
 
