@@ -1,4 +1,5 @@
 sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file,splint_file
 np-aav2-test,aav2,aav2,np,,tests/data/reads/np-aav2.fastq,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa,
 np-cc-aav2-test,aav2,aav2,np-cc,3,tests/data/reads/np-cc-aav2.fastq,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa,tests/data/references/splint.fa
-ref-aav2,aav23,aav2,pb,,tests/data/references/AAV2_AAV3.fa,tests/data/references/AAV2_AAV3.fa,tests/data/references/wtAAV2.fa
+ref-aav2,aav2,aav2,pb,,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa,tests/data/references/wtAAV2.fa
+np-2389-test,aav2389,aav2,np,,tests/data/reads/np-2389.fastq,tests/data/references/wt2n496d389dna.fasta,tests/data/references/wtAAV2.fa,

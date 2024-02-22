@@ -61,3 +61,26 @@ def fasta_file_gz(fasta_lines):
             handle.write(line)
     temp.seek(0)
     return temp
+
+
+#### variant fixtures ####
+
+@pytest.fixture
+def resultfile_aav2():
+    return "tests/data/variants/aav2N496D.tsv"
+
+@pytest.fixture
+def resultfile_aav2_shorter():
+    return "tests/data/variants/aav2N496D_shorter.tsv"
+
+@pytest.fixture
+def resultfile_aav23():
+    return "tests/data/variants/aav23.tsv.gz"
+
+@pytest.fixture
+def resultfile_aav2389():
+    return "tests/data/variants/aav2389.tsv.gz"
+
+@pytest.fixture
+def resultfile(request):    
+    return request.getfixturevalue(request.param)
