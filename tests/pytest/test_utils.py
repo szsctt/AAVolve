@@ -2,6 +2,7 @@ import tempfile
 import pytest
 from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
+    read_variant_file,
     Substitution, Insertion, Deletion
     )
 
@@ -58,6 +59,70 @@ class TestSeqGenerator:
         with tempfile.NamedTemporaryFile(mode='w+t') as temp:
             with open(temp.name, 'r') as handle:
                 assert list(seq_generator(handle)) == []
+
+class TestReadVariantFile:
+
+    @pytest.mark.parametrize('resultfile,expected_n_lines', 
+                                [('resultfile_aav2',1), 
+                                 ('resultfile_aav2_shorter',1), 
+                                 ('resultfile_aav23', 416), 
+                                 ('resultfile_aav2389', 1362)], 
+                            indirect=['resultfile'])
+    def test_read_variant_file(self, resultfile, expected_n_lines):
+        n_lines = 0
+        longer_cols = set(["reference_name", "pos", "query_name", "var", "ref_bases", "query_bases", "aa_change"])
+        shorter_cols = set(["query_name", "pos", "ref_bases", "query_bases", "aa_change"])
+        for line in read_variant_file(resultfile):
+            assert line
+            assert len(line) in [len(longer_cols), len(shorter_cols)]
+            if len(line) == len(longer_cols):
+                assert set(line.keys()) == longer_cols
+            else:
+                assert set(line.keys()) == shorter_cols
+            n_lines += 1
+        assert n_lines == expected_n_lines
+
+    def test_read_variant_file_2(self, resultfile_aav2):
+        
+        expected_lines = {
+            "reference_name":"AAV2", 
+            "pos":"1485", 
+            "query_name":"AAV2_N496D", 
+            "var":"A1486G",
+            "ref_bases":"A", 
+            "query_bases":"G", 
+            "aa_change":"True"
+        }
+        lines = [i for i in read_variant_file(resultfile_aav2)]
+        assert lines == [expected_lines]
+
+    def test_read_variant_file_3(self, resultfile_aav2_shorter):
+        
+        expected_lines = {
+            "pos":"1485", 
+            "query_name":"AAV2_N496D", 
+            "ref_bases":"A", 
+            "query_bases":"G", 
+            "aa_change":"True"
+        }
+        lines = [i for i in read_variant_file(resultfile_aav2_shorter)]
+        assert lines == [expected_lines]
+
+    def test_read_variant_file_empty(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            lines = [i for i in read_variant_file(temp.name)]
+        assert lines == []
+
+    def test_read_variant_file_header_only(self):
+
+        header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            temp.write(header)
+            temp.seek(0)
+            lines = list(read_variant_file(temp.name))
+
+        assert lines == []
 
 
 class TestSubstituion:
