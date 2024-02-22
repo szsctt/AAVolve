@@ -65,7 +65,7 @@ rule align:
     threads: 8
     shell:
         """
-        minimap2 -t {threads} -ax map-hifi {input.reference} {input.reads} -B 1.5 --MD |\
+        minimap2 -t {threads} -ax map-hifi {input.reference} {input.reads} -B 1.5 --end-bonus 5 --MD |\
             samtools sort -o {output.aligned} -
         
         samtools index {output.aligned}
