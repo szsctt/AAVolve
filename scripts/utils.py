@@ -1,4 +1,5 @@
 import gzip
+import csv
 
 def use_open(filename, *args, **kwargs):
     """
@@ -31,6 +32,13 @@ def seq_generator(handle):
             seq = seq + line.strip()
     if name != '':
         yield name, seq
+
+def read_variant_file(filename):
+
+  with use_open(filename, 'rt', newline='') as f:
+    reader = csv.DictReader(f, delimiter="\t")
+    for line in reader:
+      yield line
 
  
 # internal representation of a subsitution
