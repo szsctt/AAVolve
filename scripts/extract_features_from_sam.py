@@ -58,7 +58,6 @@ def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_afte
 
   ref_seqs = SeqIO.to_dict(SeqIO.parse(reffile, "fasta"))
 
-
   with use_open(outfile, "wt") as out:
     
     # write header
@@ -259,6 +258,7 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
         last_qpos = qpos
     
     yield read.query_name, read_vars
+  print(f"Discarded {discarded} reads")
 
 def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
     """
