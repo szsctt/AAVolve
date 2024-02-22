@@ -13,9 +13,7 @@ def main(args):
 
     first, last = get_first_last_variant(arg.input)
 
-    with open(arg.output, 'w') as f:
-        f.write(str(first) + '\n')
-        f.write(str(last) + '\n')
+    write_output(arg.output, first, last)
 
 
 def get_first_last_variant(filename):
@@ -34,6 +32,13 @@ def get_first_last_variant(filename):
     assert last is not None
 
     return first, last
+
+
+def write_output(filename, first, last):
+
+    with open(filename, 'w') as f:
+        f.write(str(first) + '\n')
+        f.write(str(last) + '\n')
 
 def get_args(args):
 
