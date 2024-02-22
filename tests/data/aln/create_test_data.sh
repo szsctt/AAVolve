@@ -17,3 +17,6 @@ samtools index toy.bam
 
 minimap2 -ax map-hifi --MD  $AAV2 ../reads/aav2_subs.fa | samtools sort -o aav2_subs.bam - 
 samtools index aav2_subs.bam
+
+minimap2 -ax map-hifi --MD $AAV2 -B 1.5 --end-bonus 5 ../references/AAV2_AAV3.fa | samtools sort -o aav23.bam -
+samtools index aav23.bam
