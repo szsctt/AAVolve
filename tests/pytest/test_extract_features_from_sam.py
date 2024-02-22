@@ -23,10 +23,6 @@ def samfile_aav2():
     return "tests/data/aln/aav2_N496D.bam"
 
 @pytest.fixture
-def resultfile_aav2():
-    return "tests/data/variants/aav2N496D.tsv"
-
-@pytest.fixture
 def alignmentfile_aav2(samfile_aav2):
     return pysam.AlignmentFile(samfile_aav2, "rb")
 
@@ -58,10 +54,6 @@ def alignmentfile(request):
 
 @pytest.fixture
 def reffile(request):
-    return request.getfixturevalue(request.param)
-
-@pytest.fixture
-def resultfile(request):    
     return request.getfixturevalue(request.param)
 
 @pytest.fixture
