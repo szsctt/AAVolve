@@ -423,6 +423,48 @@ class TestCheckData:
             check_data(pd.DataFrame([config]))
         assert error.value.args[0] == "Splint file does not exist: nonexistentfile"
 
+    def test_check_data_non_parental_freq_added(self, sample_df):
+        """
+        Check that non_parental_freq is set to null if not present
+        """
+
+        check_data(sample_df)
+
+        assert 'non_parental_freq' in sample_df.columns
+        assert all(sample_df['non_parental_freq'].isnull())
+
+           
+    @pytest.mark.parametrize("non_parental_freq", [0, 0.2, 0.5, 1])
+    def test_check_data_non_parental_freq_correct(self, sample_df, non_parental_freq):
+        """
+        Check that an exception is raised if non_parental_freq is not between 0 and 1
+        """
+
+        # change non_parental_freq
+        sample_df['non_parental_freq'] = non_parental_freq
+
+        check_data(sample_df)
+
+        assert 'non_parental_freq' in sample_df.columns
+        assert all([i == non_parental_freq for i in sample_df['non_parental_freq']])
+
+
+    @pytest.mark.parametrize("non_parental_freq", [-0.1, 1.1])
+    def test_check_data_non_parental_freq_incorrect(self, sample_df, non_parental_freq):
+        """
+        Check that an exception is raised if non_parental_freq is not between 0 and 1
+        """
+
+        # change non_parental_freq
+        sample_df['non_parental_freq'] = non_parental_freq
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == "Non-parental frequency (column 'non_parental_freq') must be between 0 and 1"
+
+
+
 class TestGetSamples:
 
     def test_get_samples_from_command_line(self, config):
@@ -435,6 +477,7 @@ class TestGetSamples:
 
         expected_samples = pd.DataFrame([config])
         expected_samples['min_reps'] = None 
+        expected_samples['non_parental_freq'] = None
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -458,6 +501,7 @@ class TestGetSamples:
             expected_samples.to_csv(f.name, index=False)
 
             expected_samples['min_reps'] = DEFAULT_MINREPS if seq_tech == 'np-cc' else None
+            expected_samples['non_parental_freq'] = None
 
             # pass in both file and config
             config['samples'] = f.name

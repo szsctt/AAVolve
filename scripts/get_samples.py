@@ -181,6 +181,15 @@ def check_data(samples):
         else:
             samples.loc[i, 'min_reps'] = None
 
+
+    # check if non_parental_freq is specified - otherwise fill with None
+    if 'non_parental_freq' not in samples.columns:
+        samples['non_parental_freq'] = [None]*len(samples)
+    # check that all non_parental_freq values are between 0 and 1
+    for i, row in samples.iterrows():
+        if row['non_parental_freq'] is not None and (row['non_parental_freq'] < 0 or row['non_parental_freq'] > 1):
+            raise Exception("Non-parental frequency (column 'non_parental_freq') must be between 0 and 1")
+
     return samples
 
 def get_samples(config):
