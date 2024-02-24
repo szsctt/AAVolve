@@ -2,10 +2,10 @@ import tempfile
 import pytest
 from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
-    read_variant_file,
+    read_variant_file, get_variant_type, get_variant, 
+    get_variants_set,
     Substitution, Insertion, Deletion
     )
-
 
 class TestUseOpen:
     
@@ -24,7 +24,6 @@ class TestUseOpen:
         assert result == fasta_lines
         fasta_file_gz.close()
 
-
 class TestGetRepeatsFromR2C2:
     
     def test_get_repeats(self, fasta_contents):
@@ -36,7 +35,6 @@ class TestGetRepeatsFromR2C2:
     def test_get_repeats_invalid(self):
         with pytest.raises(ValueError):
             get_repeats_from_r2c2_name('invalid_name')
-
 
 class TestSeqGenerator:
 
@@ -124,6 +122,38 @@ class TestReadVariantFile:
 
         assert lines == []
 
+class TestGetVariantType:
+
+    @pytest.mark.parametrize('ref,alt,expected', 
+                                [("G", "A", "sub"), 
+                                 (".", "A", "ins"), 
+                                 ("A", ".", "del")])
+    def test_get_variant_type(self, ref, alt, expected):
+        assert get_variant_type(ref, alt) == expected
+
+class TestGetVariant:
+
+    @pytest.mark.parametrize("write_variants", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_variants'])
+    def test_get_variant(self, write_variants):
+        
+        _, expected_vars, temp = write_variants
+
+        for i, line in enumerate(read_variant_file(temp.name)):
+            assert get_variant(line) == expected_vars[i]
+
+        temp.close()
+
+class TestGetVariantsSet:
+
+    @pytest.mark.parametrize("write_variants", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_variants'])
+    def test_get_variants_set(self, write_variants):
+
+        _, expected_vars, temp = write_variants
+
+        expected_set = set(expected_vars)
+        assert get_variants_set(temp.name) == expected_set
+
+        temp.close()
 
 class TestSubstituion:
 
@@ -195,8 +225,8 @@ class TestSubstituion:
 
     def test_header(self, substitution):
         
-        shorter_header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
-        longer_header = "reference_name\tzero_based_pos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
+        shorter_header = "query_name\tpos\tref_bases\tquery_bases\taa_change\n"
+        longer_header = "reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
         
         assert substitution.header(shorter=True) == shorter_header
         assert substitution.header(shorter=False) == longer_header
@@ -306,8 +336,8 @@ class TestInsertion:
     @pytest.mark.parametrize('shorter', [True, False])
     def test_header(self, shorter, insertion_1):
         ins = insertion_1
-        shorter_header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
-        longer_header = "reference_name\tzero_based_pos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
+        shorter_header = "query_name\tpos\tref_bases\tquery_bases\taa_change\n"
+        longer_header = "reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
         assert ins.header(shorter) == shorter_header if shorter else longer_header
 
     @pytest.mark.parametrize('insertion', 
@@ -429,8 +459,8 @@ class TestDeletion:
     @pytest.mark.parametrize('shorter', [True, False])
     def test_header(self, shorter, deletion_1):
         delete = deletion_1
-        shorter_header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
-        longer_header = "reference_name\tzero_based_pos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
+        shorter_header = "query_name\tpos\tref_bases\tquery_bases\taa_change\n"
+        longer_header = "reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
         assert delete.header(shorter) == shorter_header if shorter else longer_header
 
     @pytest.mark.parametrize('deletion,expected',

@@ -40,6 +40,85 @@ def read_variant_file(filename):
     for line in reader:
       yield line
 
+def get_variant_type(ref, alt):
+  """
+  Get type of variant based on row of file
+  """
+  # insertion relative to reference
+  if ref == '.':
+    return 'ins'
+  
+  # deletion from reference
+  elif alt == '.': 
+    return 'del'
+  
+  return 'sub'
+
+def get_variant(row):
+  """
+  Return a variant (Insertion, Deletion, Substitution) from a row from a file
+  """
+  var_type = get_variant_type(row['ref_bases'], row['query_bases'])
+  
+
+  # get info for substitution
+  if var_type == 'sub':
+     
+    rpos = int(row['pos']) 
+    rseq = row['ref_bases']
+    qseq = row['query_bases']
+    changes_aa = row['aa_change'] == 'True'
+
+
+    assert len(rseq) == 1
+    assert len(qseq) == 1
+    assert changes_aa is True or changes_aa is False
+    assert rpos >=0
+
+    var = Substitution(rpos, rseq, qseq, changes_aa)
+    
+  # get info for insertion 
+  elif var_type == 'ins':
+     
+    last_rpos = int(row['pos']) - 1
+    qpos = None # we don't have this information, so set to None
+    bases = row['query_bases']
+    var = Insertion(last_rpos, qpos, bases)
+     
+  # get info for deletion
+  elif var_type == 'del':
+     
+    
+    pos = row['pos'].split('_')
+    start_rpos = int(pos[0])
+    end_rpos = int(pos[1])
+    bases = row['ref_bases']
+    
+    var = Deletion(start_rpos, None, bases)
+    var.end_rpos = end_rpos
+
+  # check variant strings are equal
+  if 'var' in row:
+    assert str(var) == row['var']
+   
+  return var
+
+def get_variants_set(filename):
+  """
+  Get a set of variants from file
+  """
+  vars = set()
+  # read as tsv
+  print(f"Reading variants from {filename}")
+  
+  for row in read_variant_file(filename):
+
+    # get id for this variant
+    var = get_variant(row)
+    vars.add(var)
+
+  return vars
+
  
 # internal representation of a subsitution
 class Substitution:
@@ -112,12 +191,12 @@ class Substitution:
     """
     Header for printing to file / stdout
     """
-    
+
     if shorter:
-      fields = ["query_name", "zero_based_pos", "ref_bases", "query_bases", "aa_change"]
+      fields = ["query_name", "pos", "ref_bases", "query_bases", "aa_change"]
     
     else:
-      fields = ["reference_name", "zero_based_pos", "query_name", "var", "ref_bases", "query_bases", "aa_change"]
+      fields = ["reference_name", "pos", "query_name", "var", "ref_bases", "query_bases", "aa_change"]
       
     return "\t".join(fields) + "\n"
     
