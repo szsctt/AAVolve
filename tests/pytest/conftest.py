@@ -3,6 +3,8 @@ import gzip
 import pytest
 import pandas as pd
 
+from scripts.utils import Substitution, Insertion, Deletion
+
 #### sample csv fixtures ####
 
 @pytest.fixture
@@ -84,3 +86,52 @@ def resultfile_aav2389():
 @pytest.fixture
 def resultfile(request):    
     return request.getfixturevalue(request.param)
+
+
+@pytest.fixture
+def some_variants():
+    vars = [
+            Substitution(10, 'A', 'T', True),
+            Substitution(13, 'A', 'G', False),
+            Insertion(70, 82, 'C'),
+            Insertion(75, 90, 'C'),
+            Deletion(49, 61, 'C'),
+            Deletion(90, 81, 'C')
+        ]
+    vars[2].add_another_base('G')
+    vars[2].add_another_base('C')
+    vars[5].add_another_base('G')
+    vars[5].add_another_base('C')
+
+    return vars
+
+@pytest.fixture
+def write_variants(request):
+
+    shorter, variants_name = request.param
+    variants = request.getfixturevalue(variants_name)
+
+    temp = tempfile.NamedTemporaryFile(mode='w+t')
+    temp.write(variants[0].header(shorter=shorter))
+    for var in variants:
+        reference_name = None if shorter else 'reference'
+        temp.write(var.print_line('query', reference_name))
+    temp.seek(0)
+    return shorter, variants, temp
+
+@pytest.fixture
+def write_variants_repeated(request):
+
+    shorter, n_repeats, variants_name = request.param
+    variants = request.getfixturevalue(variants_name)
+    assert len(n_repeats) == len(variants) # n_repeats for each variant
+
+    temp = tempfile.NamedTemporaryFile(mode='w+t')
+    temp.write(variants[0].header(shorter=shorter))
+    for i, var in enumerate(variants):
+        reference_name = None if shorter else 'reference'
+        for j in range(n_repeats[i]):
+            temp.write(var.print_line(f'query{j}', reference_name))
+
+    temp.seek(0)
+    return shorter, n_repeats, variants, temp
