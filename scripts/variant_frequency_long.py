@@ -20,9 +20,8 @@
 
 
 import argparse
-import csv
 
-from scripts.utils import get_variants_set, get_variant, Substitution, Insertion, Deletion
+from scripts.utils import get_variants_set, get_variant
 from scripts.utils import use_open, read_variant_file
 
 def main():
@@ -47,14 +46,14 @@ def main():
     
     # output frequencies of all variants
     if args.output_all_freqs is not None:
-        write_freqs(freqs, args.output_all_freqs, parents, parents_only=False)
+        write_freqs(freqs, parents, args.output_all_freqs, parents_only=False)
     
     # output frequencies of parental variants
     if args.output_parental_freqs is not None:
         if parents is None:
             print('No parental variants provided, so no parental frequencies to output')
         else:
-            write_freqs(freqs, parents, args.output_parental_freqs, parents, parents_only=True) 
+            write_freqs(freqs, parents, args.output_parental_freqs,parents_only=True) 
 
     # filter by desired fraction
     freqs = {k:v for k, v in freqs.items() if v > args.frac}
@@ -99,7 +98,7 @@ def get_variant_frequency(file):
          
     return counts
 
-def write_freqs(freqs, filename, parents, parents_only=False):
+def write_freqs(freqs, parents,  filename, parents_only=False):
     """
     Write frequencies of parental variants to output file
     If parents_only is True, then only write frequencies of parental variants 
@@ -129,12 +128,13 @@ def write_freqs(freqs, filename, parents, parents_only=False):
                 row = row + f"\t{f}\n"
                 handle.write(row)
 
+
+
 def write_variants(freqs, filename, input_file):
     """
     Write the high-frequency variants to file in same format as input file
     """  
-    
-    # we need to match the format of parents_file in the output
+    # need to match the format of parents_file in the output
     # so figure out if we used shorter or longer input
     first_row = next(read_variant_file(input_file))
     assert len(first_row) in {5, 7}
@@ -146,12 +146,10 @@ def write_variants(freqs, filename, input_file):
     # open file and write header
     with use_open(filename, 'wt', newline='') as handle:
         handle.write('\t'.join(first_row.keys())+'\n')
-        
         # iterate over variants
         for var in freqs.keys():
-         
             # write line
-            line = var.print_line('non_parental', ref)
+            line = var.print_line(query_name='non_parental', ref_name = ref)
             handle.write(line)
              
          
