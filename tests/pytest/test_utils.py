@@ -133,10 +133,10 @@ class TestGetVariantType:
 
 class TestGetVariant:
 
-    @pytest.mark.parametrize("write_variants", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_variants'])
-    def test_get_variant(self, write_variants):
+    @pytest.mark.parametrize("write_vars", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_vars'])
+    def test_get_variant(self, write_vars):
         
-        _, expected_vars, temp = write_variants
+        _, expected_vars, temp = write_vars
 
         for i, line in enumerate(read_variant_file(temp.name)):
             assert get_variant(line) == expected_vars[i]
@@ -145,10 +145,10 @@ class TestGetVariant:
 
 class TestGetVariantsSet:
 
-    @pytest.mark.parametrize("write_variants", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_variants'])
-    def test_get_variants_set(self, write_variants):
+    @pytest.mark.parametrize("write_vars", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_vars'])
+    def test_get_variants_set(self, write_vars):
 
-        _, expected_vars, temp = write_variants
+        _, expected_vars, temp = write_vars
 
         expected_set = set(expected_vars)
         assert get_variants_set(temp.name) == expected_set

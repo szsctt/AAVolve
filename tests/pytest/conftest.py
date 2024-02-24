@@ -84,6 +84,10 @@ def resultfile_aav2389():
     return "tests/data/variants/aav2389.tsv.gz"
 
 @pytest.fixture
+def resultfile_aav2389_some():
+    return "tests/data/variants/test_variants.tsv"
+
+@pytest.fixture
 def resultfile(request):    
     return request.getfixturevalue(request.param)
 
@@ -106,7 +110,15 @@ def some_variants():
     return vars
 
 @pytest.fixture
-def write_variants(request):
+def some_variant_frequencies(some_variants):
+    freqs = dict()
+    for i, var in enumerate(some_variants):
+        freqs[var] = 1/(i+1)
+
+    return freqs
+
+@pytest.fixture
+def write_vars(request):
 
     shorter, variants_name = request.param
     variants = request.getfixturevalue(variants_name)
