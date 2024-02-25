@@ -126,6 +126,23 @@ class TestWriteVariants:
         # clean up
         temp.close()
       
+    def test_no_variants(self):
+        
+        # write file
+        with tempfile.NamedTemporaryFile(mode='w+') as temp, tempfile.NamedTemporaryFile(mode='w+') as temp2:
+            # write header to temp2
+            temp2.write('query_name\tpos\tref_bases\tquery_bases\taa_change\n')
+            temp2.seek(0)
+            write_variants({}, temp.name, temp2.name)
+
+            # read file
+            temp.seek(0)
+            lines = temp.readlines()
+
+        # check
+        assert len(lines) == 1
+        assert lines[0] == 'query_name\tpos\tref_bases\tquery_bases\taa_change\n'
+
 
 class TestMain:
 
@@ -169,3 +186,79 @@ class TestMain:
         assert high_lines == expected_high
         assert all_lines == expected_all
         assert par_lines == expected_par
+
+    def test_main_headers_only(self, monkeypatch):
+            
+            with (
+                tempfile.NamedTemporaryFile(mode='w+') as reads_in,
+                tempfile.NamedTemporaryFile(mode='w+') as par_in,
+                tempfile.NamedTemporaryFile(mode='w+') as high_out,
+                tempfile.NamedTemporaryFile(mode='w+') as all_out,
+                tempfile.NamedTemporaryFile(mode='w+') as par_out):
+
+                # write headers
+                for f in (reads_in, par_in):
+                    f.write('query_name\tpos\tref_bases\tquery_bases\taa_change\n')
+                    f.seek(0)
+
+                # set sys.argv
+                monkeypatch.setattr('sys.argv', 
+                ['variant_frequency_long.py', 
+                    '-i', reads_in.name,
+                    '-p', par_in.name, 
+                    '-o', high_out.name,
+                    '-oa', all_out.name,
+                    '-op', par_out.name,
+                    '-f', '0.5'])
+                
+                # run function
+                main()
+    
+                # read files
+                high_out.seek(0), all_out.seek(0), par_out.seek(0)
+                high_lines = high_out.readlines()
+                all_lines = all_out.readlines()
+                par_lines = par_out.readlines()
+            
+            assert high_lines == ['query_name\tpos\tref_bases\tquery_bases\taa_change\n']
+            assert all_lines == []
+            assert par_lines == []
+
+    def test_main_no_parents(self, resultfile_aav2389_some, monkeypatch):
+            
+        expected_high = [
+            'reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n', 
+            'AAV2\t40\tnon_parental\tC41A\tC\tA\tTrue\n', 
+            'AAV2\t41\tnon_parental\tT42C\tT\tC\tTrue\n', 
+            'AAV2\t44\tnon_parental\tC45T\tC\tT\tFalse\n', 
+            'AAV2\t53\tnon_parental\tA54C\tA\tC\tFalse\n', 
+            'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n'
+            ]
+        expected_all = [
+            'query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 
+            'non_parental\t40\tC\tA\tTrue\t1.0\n', 
+            'non_parental\t41\tT\tC\tTrue\t1.0\n', 
+            'non_parental\t44\tC\tT\tFalse\t1.0\n', 
+            'non_parental\t53\tA\tC\tFalse\t1.0\n', 
+            'non_parental\t55\tA\tC\tFalse\t0.6666666666666666\n'
+            ]
+        
+        with (tempfile.NamedTemporaryFile(mode='w+') as high,
+            tempfile.NamedTemporaryFile(mode='w+') as all):
+            # set sys.argv
+            monkeypatch.setattr('sys.argv', 
+                                ['variant_frequency_long.py', 
+                                '-i', resultfile_aav2389_some,
+                                '-o', high.name,
+                                '-oa', all.name,
+                                '-f', '0.5'])
+
+            main()
+
+            # read files
+            high.seek(0), all.seek(0)
+            high_lines = high.readlines()
+            all_lines = all.readlines()
+        
+        assert high_lines == expected_high
+        assert all_lines == expected_all

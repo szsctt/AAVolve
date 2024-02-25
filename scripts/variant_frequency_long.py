@@ -46,14 +46,17 @@ def main():
     
     # output frequencies of all variants
     if args.output_all_freqs is not None:
-        write_freqs(freqs, parents, args.output_all_freqs, parents_only=False)
+        if parents:
+            write_freqs(freqs, parents, args.output_all_freqs, parents_only=False)
+        else:
+            write_freqs(freqs, {}, args.output_all_freqs, parents_only=False)
     
     # output frequencies of parental variants
     if args.output_parental_freqs is not None:
-        if parents is None:
-            print('No parental variants provided, so no parental frequencies to output')
-        else:
+        if parents:
             write_freqs(freqs, parents, args.output_parental_freqs,parents_only=True) 
+        else:
+            write_freqs({}, {}, args.output_parental_freqs,parents_only=True)
 
     # filter by desired fraction
     freqs = {k:v for k, v in freqs.items() if v > args.frac}
@@ -136,16 +139,21 @@ def write_variants(freqs, filename, input_file):
     """  
     # need to match the format of parents_file in the output
     # so figure out if we used shorter or longer input
-    first_row = next(read_variant_file(input_file))
-    assert len(first_row) in {5, 7}
-    if len(first_row) == 7:
-        ref = first_row['reference_name']
-    else:
-        ref = None
+    try:
+        first_row = next(read_variant_file(input_file))
+        header = '\t'.join(first_row.keys()) + '\n'
+        assert len(first_row) in {5, 7}
+        if len(first_row) == 7:
+            ref = first_row['reference_name']
+        else:
+            ref = None
+    except StopIteration:
+        with open(input_file, 'r') as f:
+            header = f.readline()
 
     # open file and write header
     with use_open(filename, 'wt', newline='') as handle:
-        handle.write('\t'.join(first_row.keys())+'\n')
+        handle.write(header)
         # iterate over variants
         for var in freqs.keys():
             # write line
