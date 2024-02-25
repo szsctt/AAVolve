@@ -110,3 +110,19 @@ rule extract_variants_reads:
             --must-start-before $FIRST \
             --must-end-after $LAST \
         """
+
+# count the number of reads we ended up with data for (some will be excluded
+# because they didn't cover enough of the reference)
+rule count_variant_reads:
+    input:
+        var = rules.extract_variants_reads.output.var
+    output:
+        read_count = "out/variants/reads/{sample}_read-count.txt"
+    params:
+        cat = lambda wildcards, input: "zcat" if input.var.endswith('.gz') else 'cat'
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
+    shell:
+        """
+        {params.cat} {input.var} | cut -f3 -d$'\\t' | uniq | wc -l > {output.read_count}
+        """

@@ -17,8 +17,11 @@ rule all:
         consensus,
         expand("out/aligned/{sample}.bam", sample=samples.sample_name),
         expand("out/aligned/{sample}.bam", sample=samples.parent_name),
-        expand("out/variants/reads/{sample}.tsv.gz", sample=samples.sample_name)
+        expand("out/variants/reads/{sample}.tsv.gz", sample=samples.sample_name),
+        expand("out/variants/reads/{sample}_read-count.txt", sample=samples.sample_name),
+        expand("out/variants/combined/{sample}.tsv.gz", sample=samples.sample_name),
 
 include: 'rules/consensus.smk'
 include: 'rules/align.smk'
 include: 'rules/variants.smk'
+include: 'rules/transform_variants.smk'
