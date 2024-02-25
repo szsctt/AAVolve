@@ -33,6 +33,7 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `parent_file`: The path to the fasta file containing the parental sequences used for the shuffling experiment
 - `reference_file` (optional): The path to the fasta file containing one of the parental sequences to be used as a reference for alingment (default: the first parental sequence)
 - `splint_file` (required for RCA data): The path to the fasta file containing the splint used for circularization during RCA
-- `non_parental_freq` (optinal): Include non-parental variants seen in more than this fraction of the reads (default: don't include non-parental variants)
+- `non_parental_freq` (optional): Identify non-parental variants seen in more than this fraction of the reads (default: 0.2)
+- `include_non_parental`(optional): Include non-parental variants if they are seen in more than `non_parental_freq` reads (default: False)
 
 

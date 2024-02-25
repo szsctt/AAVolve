@@ -5,7 +5,8 @@ import os
 import pytest
 import pandas as pd
 
-from scripts.get_samples import PARENTDIR, DEFAULT_MINREPS, REQUIRED_COLUMNS, SEQ_TECHS
+from scripts.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
+                                 DEFAULT_INCLUDE_NON, REQUIRED_COLUMNS, SEQ_TECHS)
 from scripts.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
@@ -425,13 +426,13 @@ class TestCheckData:
 
     def test_check_data_non_parental_freq_added(self, sample_df):
         """
-        Check that non_parental_freq is set to null if not present
+        Check that non_parental_freq is set to default if not present
         """
 
         check_data(sample_df)
 
         assert 'non_parental_freq' in sample_df.columns
-        assert all(sample_df['non_parental_freq'].isnull())
+        assert all(sample_df['non_parental_freq'] == DEFAULT_FREQ)
 
            
     @pytest.mark.parametrize("non_parental_freq", [0, 0.2, 0.5, 1])
@@ -463,7 +464,43 @@ class TestCheckData:
             check_data(sample_df)
         assert error.value.args[0] == "Non-parental frequency (column 'non_parental_freq') must be between 0 and 1"
 
+    def test_check_data_include_non_parental_added(self, sample_df):
+        """
+        Check that include_non_parental is set to default if not present
+        """
 
+        check_data(sample_df)
+
+        assert 'include_non_parental' in sample_df.columns
+        assert all(sample_df['include_non_parental'] == DEFAULT_INCLUDE_NON)
+    
+    @pytest.mark.parametrize("include_non_parental", [True, False])
+    def test_check_data_include_non_parental_correct(self, sample_df, include_non_parental):
+        """
+        Check that an exception is not raised if include_non_parental not True or False
+        """
+
+        # change include_non_parental
+        sample_df['include_non_parental'] = include_non_parental
+
+        check_data(sample_df)
+
+        assert 'include_non_parental' in sample_df.columns
+        assert all([i == include_non_parental for i in sample_df['include_non_parental']])
+    
+    @pytest.mark.parametrize("include_non_parental", ["blah", 0.2, 1.1])
+    def test_check_data_include_non_parental_incorrect(self, sample_df, include_non_parental):
+        """
+        Check that an exception is raised if include_non_parental not True or False
+        """
+
+        # change include_non_parental
+        sample_df['include_non_parental'] = include_non_parental
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == "Non-parental frequency (column 'include_non_parental') must be True or False"
 
 class TestGetSamples:
 
@@ -477,7 +514,8 @@ class TestGetSamples:
 
         expected_samples = pd.DataFrame([config])
         expected_samples['min_reps'] = None 
-        expected_samples['non_parental_freq'] = None
+        expected_samples['non_parental_freq'] = DEFAULT_FREQ
+        expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -501,7 +539,9 @@ class TestGetSamples:
             expected_samples.to_csv(f.name, index=False)
 
             expected_samples['min_reps'] = DEFAULT_MINREPS if seq_tech == 'np-cc' else None
-            expected_samples['non_parental_freq'] = None
+            expected_samples['non_parental_freq'] = DEFAULT_FREQ
+            expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
+
 
             # pass in both file and config
             config['samples'] = f.name
