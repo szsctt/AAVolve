@@ -23,6 +23,7 @@ rule all:
         expand("out/variants/pivot/{sample}_parents.tsv.gz", sample=samples.sample_name),
         expand("out/parents/{sample}_assigned-parents.tsv.gz", sample=samples.sample_name),
         expand("out/parents/{sample}_assigned-parents_freq.tsv.gz", sample=samples.sample_name),
+        expand("out/parents/{sample}_break.tsv.gz", sample=samples.sample_name),
 
 include: 'rules/consensus.smk'
 include: 'rules/align.smk'

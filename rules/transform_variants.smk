@@ -110,3 +110,21 @@ rule parent_freq:
             -o {output.freqs} \
             --split-counts
         """
+
+# identify breakpoints
+rule ident_breakpoints:
+    input:
+        in_file = rules.assign_parents.output.assigned
+    output:
+        breakpoints = "out/parents/{sample}_break.tsv.gz",
+        break_per_read = "out/parents/{sample}_break-perread.tsv.gz",
+        break_per_var = "out/parents/{sample}_break-pervar.tsv.gz"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m scripts.count_breakpoints \
+            --input {input.in_file} \
+            --output {output.breakpoints} \
+            --summary1 {output.break_per_read} \
+            --summary2 {output.break_per_var}
+        """
