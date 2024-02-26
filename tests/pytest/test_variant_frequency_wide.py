@@ -4,7 +4,7 @@ import pytest
 from scripts.variant_frequency_wide import count_freqs, main
 
 @pytest.fixture
-def temp():
+def test_wide():
     temp = tempfile.NamedTemporaryFile(mode='w+t')
     temp.write('read_id\tvar1\tvar2\tvar3\tvar4\n')
     temp.write('read1\tA\tA\tB,C\tA\n')
@@ -16,7 +16,7 @@ def temp():
 
 class TestCountFreqs:
 
-    def test_count_freqs(self, temp):
+    def test_count_freqs(self, test_wide):
 
         expected_freqs = {
             'var1': {'A': 0.5, 'C': 0.5},
@@ -25,13 +25,13 @@ class TestCountFreqs:
             'var4': {'A': 0.5, 'C': 0.5}
         }
 
-        freqs = count_freqs(temp.name, split_counts=False)
+        freqs = count_freqs(test_wide.name, split_counts=False)
 
         assert freqs == expected_freqs
 
-        temp.close()
+        test_wide.close()
 
-    def test_count_freqs_split(self, temp):
+    def test_count_freqs_split(self, test_wide):
 
         expected_freqs = {
             'var1': {'A': 0.5, 'C': 0.5},
@@ -40,11 +40,11 @@ class TestCountFreqs:
             'var4': {'A': 0.5, 'C': 0.5}
         }
 
-        freqs = count_freqs(temp.name, split_counts=True)
+        freqs = count_freqs(test_wide.name, split_counts=True)
 
         assert freqs == expected_freqs
 
-        temp.close()
+        test_wide.close()
 
     def test_count_freqs_header_only(self):
         
@@ -80,7 +80,7 @@ class TestCountFreqs:
 
 class TestMain:
 
-    def test_main(self, monkeypatch, temp):
+    def test_main(self, monkeypatch, test_wide):
 
         expected_lines = [
             'variant\tparent\tfrequency\n',
@@ -96,16 +96,16 @@ class TestMain:
 
         with tempfile.NamedTemporaryFile(mode='w+t') as outfile:
 
-            monkeypatch.setattr('sys.argv', ['variant_frequency_wide.py', '-i', temp.name, '-o', outfile.name])
+            monkeypatch.setattr('sys.argv', ['variant_frequency_wide.py', '-i', test_wide.name, '-o', outfile.name])
 
             main()
 
             outfile.seek(0)
             assert outfile.readlines() == expected_lines
 
-            temp.close()
+            test_wide.close()
 
-    def test_main_split(self, monkeypatch, temp):
+    def test_main_split(self, monkeypatch, test_wide):
 
         expected_lines = [
             'variant\tparent\tfrequency\n',
@@ -121,14 +121,14 @@ class TestMain:
 
         with tempfile.NamedTemporaryFile(mode='w+t') as outfile:
 
-            monkeypatch.setattr('sys.argv', ['variant_frequency_wide.py', '-i', temp.name, '-o', outfile.name, '--split-counts'])
+            monkeypatch.setattr('sys.argv', ['variant_frequency_wide.py', '-i', test_wide.name, '-o', outfile.name, '--split-counts'])
 
             main()
 
             outfile.seek(0)
             assert outfile.readlines() == expected_lines
 
-            temp.close()
+            test_wide.close()
 
     def test_main_header_only(self, monkeypatch):
 
