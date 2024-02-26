@@ -88,6 +88,10 @@ def resultfile_aav2389_some():
     return "tests/data/variants/test_variants.tsv"
 
 @pytest.fixture
+def resultfile_aav2389_some2():
+    return "tests/data/variants/test_parents.tsv"
+
+@pytest.fixture
 def resultfile(request):    
     return request.getfixturevalue(request.param)
 

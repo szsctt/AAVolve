@@ -151,16 +151,17 @@ class TestMain:
         expected_high = ['reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n', 
                          'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n']
         expected_all = ['query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 
-                        'parental\t40\tC\tA\tTrue\t1.0\n', 
+                        'non_parental\t40\tC\tG\tTrue\t0.3333333333333333\n', 
                         'parental\t41\tT\tC\tTrue\t1.0\n', 
                         'parental\t44\tC\tT\tFalse\t1.0\n', 
                         'parental\t53\tA\tC\tFalse\t1.0\n', 
-                        'non_parental\t55\tA\tC\tFalse\t0.6666666666666666\n']
+                        'non_parental\t55\tA\tC\tFalse\t0.6666666666666666\n',
+                        'parental\t40\tC\tA\tTrue\t0.6666666666666666\n']
         expected_par = ['query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 
-                        'parental\t40\tC\tA\tTrue\t1.0\n', 
                         'parental\t41\tT\tC\tTrue\t1.0\n', 
                         'parental\t44\tC\tT\tFalse\t1.0\n', 
-                        'parental\t53\tA\tC\tFalse\t1.0\n']
+                        'parental\t53\tA\tC\tFalse\t1.0\n',
+                        'parental\t40\tC\tA\tTrue\t0.6666666666666666\n']
         
         with (tempfile.NamedTemporaryFile(mode='w+') as high,
               tempfile.NamedTemporaryFile(mode='w+') as all,
@@ -228,23 +229,24 @@ class TestMain:
             
         expected_high = [
             'reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n', 
-            'AAV2\t40\tnon_parental\tC41A\tC\tA\tTrue\n', 
             'AAV2\t41\tnon_parental\tT42C\tT\tC\tTrue\n', 
             'AAV2\t44\tnon_parental\tC45T\tC\tT\tFalse\n', 
             'AAV2\t53\tnon_parental\tA54C\tA\tC\tFalse\n', 
-            'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n'
+            'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n',
+            'AAV2\t40\tnon_parental\tC41A\tC\tA\tTrue\n', 
             ]
         expected_all = [
             'query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 
-            'non_parental\t40\tC\tA\tTrue\t1.0\n', 
+            'non_parental\t40\tC\tG\tTrue\t0.3333333333333333\n', 
             'non_parental\t41\tT\tC\tTrue\t1.0\n', 
             'non_parental\t44\tC\tT\tFalse\t1.0\n', 
             'non_parental\t53\tA\tC\tFalse\t1.0\n', 
-            'non_parental\t55\tA\tC\tFalse\t0.6666666666666666\n'
+            'non_parental\t55\tA\tC\tFalse\t0.6666666666666666\n',
+             'non_parental\t40\tC\tA\tTrue\t0.6666666666666666\n', 
             ]
         
         with (tempfile.NamedTemporaryFile(mode='w+') as high,
-            tempfile.NamedTemporaryFile(mode='w+') as all):
+                    tempfile.NamedTemporaryFile(mode='w+') as all):
             # set sys.argv
             monkeypatch.setattr('sys.argv', 
                                 ['variant_frequency_long.py', 

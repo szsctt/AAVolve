@@ -21,8 +21,8 @@
 
 import argparse
 
-from scripts.utils import get_variants_set, get_variant
-from scripts.utils import use_open, read_variant_file
+from scripts.utils import (get_variants_set, get_variant, get_reference_name,
+                            use_open, read_variant_file, get_header)
 
 def main():
 
@@ -139,17 +139,10 @@ def write_variants(freqs, filename, input_file):
     """  
     # need to match the format of parents_file in the output
     # so figure out if we used shorter or longer input
-    try:
-        first_row = next(read_variant_file(input_file))
-        header = '\t'.join(first_row.keys()) + '\n'
-        assert len(first_row) in {5, 7}
-        if len(first_row) == 7:
-            ref = first_row['reference_name']
-        else:
-            ref = None
-    except StopIteration:
-        with open(input_file, 'r') as f:
-            header = f.readline()
+
+    header = get_header(input_file)
+    if len(freqs) > 0:
+        ref = get_reference_name(input_file)
 
     # open file and write header
     with use_open(filename, 'wt', newline='') as handle:

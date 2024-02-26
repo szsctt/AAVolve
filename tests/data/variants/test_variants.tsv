@@ -1,5 +1,5 @@
 reference_name	pos	query_name	var	ref_bases	query_bases	aa_change
-AAV2	40	read_1	C41A	C	A	True
+AAV2	40	read_1	C41G	C	G	True
 AAV2	41	read_1	T42C	T	C	True
 AAV2	44	read_1	C45T	C	T	False
 AAV2	53	read_1	A54C	A	C	False
