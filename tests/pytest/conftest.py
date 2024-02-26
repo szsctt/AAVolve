@@ -151,3 +151,5 @@ def write_variants_repeated(request):
 
     temp.seek(0)
     return shorter, n_repeats, variants, temp
+
+

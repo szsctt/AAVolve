@@ -3,6 +3,17 @@ import pytest
 
 from scripts.assign_parents import get_parents, main
 
+@pytest.fixture
+def test_wide():
+    temp = tempfile.NamedTemporaryFile(mode='w+t')
+    temp.write('read_id\tvar1\tvar2\tvar3\tvar4\n')
+    temp.write('read1\tA\tA\tB,C\tA\n')
+    temp.write('read2\tA\tA\tC\tA\n')
+    temp.write('read3\tC\tC\tC\tC\n')
+    temp.write('read4\tC\tC\tC\tC\n')
+    temp.seek(0)
+    return temp
+
 class TestAssignParents:
     
     def test_get_parents_1(self):
