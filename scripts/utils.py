@@ -119,6 +119,46 @@ def get_variants_set(filename):
 
   return vars
 
+
+def get_header(filename):
+  """
+  Get header from file
+  """
+  with use_open(filename, 'rt') as file_handle:
+    header = file_handle.readline()
+
+  if header == '':
+    raise ValueError(f"File '{filename}' is empty")
+  return header
+
+def get_reference_name(filename):
+  """
+  Get reference name from file
+  """
+
+  # check if file is empty (no header or variants)
+  with use_open(filename, 'rt') as file_handle:
+    first_line = file_handle.readline()
+    if first_line == '':
+      raise ValueError(f"File '{filename}' is empty")
+
+  # read first line to get reference name
+  try:
+    for row in read_variant_file(filename):
+      ref = row['reference_name']
+      return ref
+  # no variants in file
+  except StopIteration:
+    pass
+  # reference isn't output for shorter format 
+  except KeyError:
+    pass
+  
+  return None
+
+def sort_var_names(variants):
+
+    return sorted(variants, key=lambda x: int(x.split(':')[0].split('_')[0]))
  
 # internal representation of a subsitution
 class Substitution:

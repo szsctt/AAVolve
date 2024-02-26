@@ -3,7 +3,7 @@ import pytest
 from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
-    get_variants_set,
+    get_variants_set, get_header, get_reference_name,
     Substitution, Insertion, Deletion
     )
 
@@ -154,6 +154,59 @@ class TestGetVariantsSet:
         assert get_variants_set(temp.name) == expected_set
 
         temp.close()
+
+class TestGetHeader:
+
+    def test_get_header_short(self):
+
+        header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            temp.write(header)
+            temp.seek(0)
+            assert get_header(temp.name) == header
+
+    def test_get_header_long(self):
+
+        header = "reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n"
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            temp.write(header)
+            temp.seek(0)
+            assert get_header(temp.name) == header
+    
+    def test_get_header_empty(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+           
+            with pytest.raises(ValueError) as e_info:
+                get_header(temp.name)
+            assert str(e_info.value) == f"File '{temp.name}' is empty"
+
+class TestGetReferenceName:
+
+    def test_get_reference_name_longer(self, resultfile_aav2):
+
+        assert get_reference_name(resultfile_aav2) == "AAV2"
+
+    def test_get_reference_name_shorter(self, resultfile_aav2_shorter):
+
+        assert get_reference_name(resultfile_aav2_shorter) is None
+
+    def test_get_reference_header_only(self):
+
+        header = "query_name\tzero_based_pos\tref_bases\tquery_bases\taa_change\n"
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            temp.write(header)
+            temp.seek(0)
+            assert get_reference_name(temp.name) is None
+
+    def test_get_reference_name_empty(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            with pytest.raises(ValueError) as e_info:
+                get_reference_name(temp.name)
+            assert str(e_info.value) == f"File '{temp.name}' is empty"
+
+
 
 class TestSubstituion:
 
