@@ -206,8 +206,6 @@ class TestGetReferenceName:
                 get_reference_name(temp.name)
             assert str(e_info.value) == f"File '{temp.name}' is empty"
 
-
-
 class TestSubstituion:
 
     @pytest.fixture
