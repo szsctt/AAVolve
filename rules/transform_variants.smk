@@ -71,3 +71,22 @@ rule pivot:
          --output-seq {output.pivoted_seq}
         """
 
+
+
+# assign parents using all columns so we have more columns for 
+# unambiguous identification of parent.  We ignore NA in this case,
+# assuming them to be errors.  Both reads with NA and non-aa changing cols
+# are removed in the next step
+rule assign_parents:
+    input:
+        parents = rules.pivot.output.pivoted_parents
+    output:
+        assigned = "out/parents/{sample}_assigned-parents.tsv.gz"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m scripts.assign_parents \
+         -i {input.parents} \
+         -o {output.assigned}
+        """
+
