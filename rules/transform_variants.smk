@@ -60,6 +60,8 @@ rule pivot:
     output:
         pivoted_parents = "out/variants/pivot/{sample}_parents.tsv.gz",
         pivoted_seq = "out/variants/pivot/{sample}_seq.tsv.gz"
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -74,14 +76,16 @@ rule pivot:
 
 
 # assign parents using all columns so we have more columns for 
-# unambiguous identification of parent.  We ignore NA in this case,
-# assuming them to be errors.  Both reads with NA and non-aa changing cols
-# are removed in the next step
+# unambiguous identification of parent.  We ignore NA values,
+# assuming them to be errors - these are filled with the most
+# likely parent
 rule assign_parents:
     input:
         parents = rules.pivot.output.pivoted_parents
     output:
         assigned = "out/parents/{sample}_assigned-parents.tsv.gz"
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -90,3 +94,19 @@ rule assign_parents:
          -o {output.assigned}
         """
 
+# calculate frequency of each parent
+rule parent_freq:
+    input:
+        in_file = rules.assign_parents.output.assigned
+    output:
+        freqs = "out/parents/{sample}_assigned-parents_freq.tsv.gz"
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m scripts.variant_frequency_wide \
+            -i {input.in_file} \
+            -o {output.freqs} \
+            --split-counts
+        """
