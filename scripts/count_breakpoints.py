@@ -80,6 +80,8 @@ def find_breakpoints(line, sorted_cols):
     """
 
     breaks = []
+    if len(sorted_cols) == 0:
+        return breaks
     curr = get_var_set(line[sorted_cols[0]])
     
     # iterate over sorted columns
