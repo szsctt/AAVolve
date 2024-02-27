@@ -10,7 +10,6 @@ SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi']
 DEFAULT_FREQ = 0.2
 DEFAULT_INCLUDE_NON = False
 
-
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
 
@@ -177,32 +176,64 @@ def check_data(samples):
         samples['min_reps'] = [None]*len(samples)
     for i, row in samples.iterrows():
         if row['seq_tech'] == 'np-cc':
+
+            # check that value is integer or null
+            try:
+                pd.to_numeric(row['min_reps'], errors='raise')
+            except ValueError:
+                raise ValueError(f"Minimum reps (column 'min_reps') must be an integer and at least 0: found value {row['min_reps']} in row {i}")
+
+            # if null, fill with default value
             if row['min_reps'] is None or pd.isnull(row['min_reps']):
                 samples.loc[i, 'min_reps'] = DEFAULT_MINREPS
+
+            # check that value is integer
+            elif row['min_reps'] != int(row['min_reps']):
+                raise ValueError(f"Minimum reps (column 'min_reps') must be an integer and at least 0: found value {row['min_reps']} in row {i}")
+
+            # check not less than 0
             elif row['min_reps'] < 0:
-                raise Exception("Minimum reps (column 'min_reps') must be at least 0")
+                raise ValueError(f"Minimum reps (column 'min_reps') must be an integer and at least 0: found value {row['min_reps']} in row {i}")
         else:
             samples.loc[i, 'min_reps'] = None
 
 
     # check if non_parental_freq is specified - otherwise fill with default
     if 'non_parental_freq' not in samples.columns:
-        samples['non_parental_freq'] = [DEFAULT_FREQ]*len(samples)
-    # check that all non_parental_freq is True or False
+        samples['non_parental_freq'] = [DEFAULT_FREQ]*len(samples) 
+
+    # check that all non_parental_freq is set and between 0 and 1
     for i, row in samples.iterrows():
-        if row['non_parental_freq'] is not None and (row['non_parental_freq'] < 0 or row['non_parental_freq'] > 1):
-            raise Exception("Non-parental frequency (column 'non_parental_freq') must be between 0 and 1")
+        
+        # check that value is numeric or null
+        try:
+            pd.to_numeric(row['non_parental_freq'], errors='raise')
+        except ValueError:
+            raise ValueError(f"Column 'non_parental_freq' must be numeric and between 0 and 1: found value {row['non_parental_freq']} in row {i}")
+
+        # not null, check value is between 0 and 1
+        if (row['non_parental_freq'] is not None or not pd.isnull(row['non_parental_freq'])) and (row['non_parental_freq'] < 0 or row['non_parental_freq'] > 1):
+            raise Exception(f"Column 'non_parental_freq' must be numeric and between 0 and 1: found value {row['non_parental_freq']} in row {i}")
+        
+        # if null, set to default
         elif row['non_parental_freq'] is None or pd.isnull(row['non_parental_freq']):
             samples.loc[i, 'non_parental_freq'] = DEFAULT_FREQ
+
 
     # check if include_freqs is specified - otherwise fill with default
     if 'include_non_parental' not in samples.columns:
         samples['include_non_parental'] = [DEFAULT_INCLUDE_NON]*len(samples)
+    
     # check that all include_non_parental values are True or False
     for i, row in samples.iterrows():
-        if row['include_non_parental'] is not True and row['include_non_parental'] is not False:
-            raise Exception("Non-parental frequency (column 'include_non_parental') must be True or False")
-        elif row['include_non_parental'] is None or pd.isnull(row['include_non_parental']):
+
+        # check that values are boolean or null
+        if not (row['include_non_parental'] is True or row['include_non_parental'] is False or
+                row['include_non_parental'] is None or pd.isnull(row['include_non_parental'])):
+                raise ValueError(f"Column 'include_non_parental' must be True, False or omitted: found value {row['include_non_parental']} in row {i}")
+        
+        # if null, fill with default
+        if row['include_non_parental'] is None or pd.isnull(row['include_non_parental']):
             samples.loc[i, 'include_non_parental'] = DEFAULT_INCLUDE_NON
 
     return samples

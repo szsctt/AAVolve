@@ -349,15 +349,17 @@ class TestCheckData:
         else:
             assert sample_df['min_reps'][0] is None
 
+    @pytest.mark.parametrize("min_reps", (-1, 'foo'))
     @pytest.mark.parametrize("seq_tech", SEQ_TECHS)
-    def test_check_data_min_reps_negative(self, sample_df, seq_tech):
+    def test_check_data_min_reps_invalid(self, sample_df, seq_tech, min_reps):
         """
-        Check that an exception is raised if min_reps is negative
+        Check that an exception is raised if min_reps is negative or not a number
         """
+        expected_error = f"Minimum reps (column 'min_reps') must be an integer and at least 0: found value {min_reps} in row 0"
 
         # change min reps
         sample_df['seq_tech'] = seq_tech
-        sample_df['min_reps'] = -1
+        sample_df['min_reps'] = min_reps
         if seq_tech == 'np-cc':
             sample_df['splint_file'] = ['tests/data/references/splint.fa']
 
@@ -365,7 +367,7 @@ class TestCheckData:
         if seq_tech == 'np-cc':
             with pytest.raises(Exception) as error:
                 check_data(sample_df)
-            assert error.value.args[0] == "Minimum reps (column 'min_reps') must be at least 0"
+            assert error.value.args[0] == expected_error
         # otherwise set to null
         else:
             check_data(sample_df)
@@ -455,6 +457,8 @@ class TestCheckData:
         """
         Check that an exception is raised if non_parental_freq is not between 0 and 1
         """
+        
+        expected_error = f"Column 'non_parental_freq' must be numeric and between 0 and 1: found value {non_parental_freq} in row 0"
 
         # change non_parental_freq
         sample_df['non_parental_freq'] = non_parental_freq
@@ -462,7 +466,7 @@ class TestCheckData:
         # should raise
         with pytest.raises(Exception) as error:
             check_data(sample_df)
-        assert error.value.args[0] == "Non-parental frequency (column 'non_parental_freq') must be between 0 and 1"
+        assert error.value.args[0] == expected_error
 
     def test_check_data_include_non_parental_added(self, sample_df):
         """
@@ -494,13 +498,15 @@ class TestCheckData:
         Check that an exception is raised if include_non_parental not True or False
         """
 
+        expected_error = f"Column 'include_non_parental' must be True, False or omitted: found value {include_non_parental} in row 0"
+
         # change include_non_parental
         sample_df['include_non_parental'] = include_non_parental
 
         # should raise
         with pytest.raises(Exception) as error:
             check_data(sample_df)
-        assert error.value.args[0] == "Non-parental frequency (column 'include_non_parental') must be True or False"
+        assert error.value.args[0] == expected_error
 
 class TestGetSamples:
 
