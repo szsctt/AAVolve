@@ -120,8 +120,10 @@ class TestWriteVariants:
         else:
           assert lines[0] == 'reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n'
           ref = 'reference'
+        i = 0
         for line, var in zip(lines[1:], expected_vars):
-            assert line == var.print_line(query_name='non_parental', ref_name=ref)
+            assert line == var.print_line(query_name=f'non_parental_{i}', ref_name=ref)
+            i += 1
 
         # clean up
         temp.close()
@@ -149,7 +151,7 @@ class TestMain:
     def test_main(self, resultfile_aav2389_some, resultfile_aav2389, monkeypatch):
         
         expected_high = ['reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n', 
-                         'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n']
+                         'AAV2\t55\tnon_parental_0\tA56C\tA\tC\tFalse\n']
         expected_all = ['query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 
                         'non_parental\t40\tC\tG\tTrue\t0.3333333333333333\n', 
                         'parental\t41\tT\tC\tTrue\t1.0\n', 
@@ -229,11 +231,11 @@ class TestMain:
             
         expected_high = [
             'reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n', 
-            'AAV2\t41\tnon_parental\tT42C\tT\tC\tTrue\n', 
-            'AAV2\t44\tnon_parental\tC45T\tC\tT\tFalse\n', 
-            'AAV2\t53\tnon_parental\tA54C\tA\tC\tFalse\n', 
-            'AAV2\t55\tnon_parental\tA56C\tA\tC\tFalse\n',
-            'AAV2\t40\tnon_parental\tC41A\tC\tA\tTrue\n', 
+            'AAV2\t41\tnon_parental_0\tT42C\tT\tC\tTrue\n', 
+            'AAV2\t44\tnon_parental_1\tC45T\tC\tT\tFalse\n', 
+            'AAV2\t53\tnon_parental_2\tA54C\tA\tC\tFalse\n', 
+            'AAV2\t55\tnon_parental_3\tA56C\tA\tC\tFalse\n',
+            'AAV2\t40\tnon_parental_4\tC41A\tC\tA\tTrue\n', 
             ]
         expected_all = [
             'query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n', 

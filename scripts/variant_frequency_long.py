@@ -148,9 +148,9 @@ def write_variants(freqs, filename, input_file):
     with use_open(filename, 'wt', newline='') as handle:
         handle.write(header)
         # iterate over variants
-        for var in freqs.keys():
+        for i, var in enumerate(freqs.keys()):
             # write line
-            line = var.print_line(query_name='non_parental', ref_name = ref)
+            line = var.print_line(query_name=f'non_parental_{i}', ref_name = ref)
             handle.write(line)
              
          
