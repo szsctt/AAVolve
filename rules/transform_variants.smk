@@ -51,25 +51,12 @@ rule combine_variants:
         gzip {params.combined_unzip}
         """
 
-def get_long_variants(wildcards):
-
-    include_non_parental = get_column_by_sample(wildcards, samples, "include_non_parental")
-    assert include_non_parental is True or include_non_parental is False
-    
-    # if we want to include non-parental, high frequnecy variants
-    if include_non_parental:
-        return expand(rules.combine_variants.output.combined, sample = wildcards.sample)
-    
-    # if we want parents only
-    parent_name = get_column_by_sample(wildcards, samples, "parent_name")
-    return expand(rules.extract_variants_parents.output.var, sample=parent_name)
-
 # pivot long to wide to get table with one read per row
 # retain all parental mutations, and discard any non-parental
 rule pivot:
     input:
         library = rules.variant_frequency.input.library,
-        parents = get_long_variants
+        parents = rules.combine_variants.output.combined
     output:
         pivoted_parents = "out/variants/pivot/{sample}_parents.tsv.gz",
         pivoted_seq = "out/variants/pivot/{sample}_seq.tsv.gz"
