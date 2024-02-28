@@ -4,6 +4,7 @@ from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,
+    sort_var_names,
     Substitution, Insertion, Deletion
     )
 
@@ -205,6 +206,35 @@ class TestGetReferenceName:
             with pytest.raises(ValueError) as e_info:
                 get_reference_name(temp.name)
             assert str(e_info.value) == f"File '{temp.name}' is empty"
+
+class TestSortVarNames:
+
+    def test_sort_var_names_sorted(self):
+
+        input_list = ['10:sub', '15:sub', '20:ins', '25:ins', '30_32:del', '35_40:del']
+        expected_list = input_list
+        result = sort_var_names(input_list)
+
+        assert result == expected_list
+
+    def test_sort_var_names_unsorted(self):
+
+        input_list = ['30:del', '20:ins', '35_40:del', '10:sub', '25:ins', '15:sub']
+        expected_list = ['10:sub', '15:sub', '20:ins', '25:ins', '30:del', '35_40:del']
+
+        result = sort_var_names(input_list)
+
+        assert result == expected_list
+
+    def test_sort_var_names_empty(self):
+
+        input_list = []
+        expected_list = []
+
+        result = sort_var_names(input_list)
+
+        assert result == expected_list
+
 
 class TestSubstituion:
 
