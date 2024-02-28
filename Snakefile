@@ -21,9 +21,13 @@ rule all:
         expand("out/variants/reads/{sample}_read-count.txt", sample=samples.sample_name),
         expand("out/variants/combined/{sample}.tsv.gz", sample=samples.sample_name),
         expand("out/variants/pivot/{sample}_parents.tsv.gz", sample=samples.sample_name),
-        expand("out/parents/{sample}_assigned-parents.tsv.gz", sample=samples.sample_name),
-        expand("out/parents/{sample}_assigned-parents_freq.tsv.gz", sample=samples.sample_name),
-        expand("out/parents/{sample}_break.tsv.gz", sample=samples.sample_name),
+        expand("out/parents/assigned/{sample}_assigned-parents.tsv.gz", sample=samples.sample_name),
+        expand("out/parents/freqs/{sample}_assigned-parents_freq.tsv.gz", sample=samples.sample_name),
+        expand("out/parents/breaks/{sample}tsv.gz", sample=samples.sample_name),
+        expand("out/parents/counts/{sample}_parent-counts.tsv.gz", sample=samples.sample_name)
+        #expand("out/corrected/{sample}.tsv", sample=samples.sample_name),
+        #expand("out/corrected/{sample}_dmat.tsv.gz", samples=samples.sample_name),
+        #expand("out/qc/{sample}_read-counts.tsv", samples=samples.sample_name)
 
 include: 'rules/consensus.smk'
 include: 'rules/align.smk'
