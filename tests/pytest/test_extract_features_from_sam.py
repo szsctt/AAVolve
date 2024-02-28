@@ -4,8 +4,6 @@ import sys
 import pytest
 import pysam
 
-from Bio import SeqIO
-
 from scripts.extract_features_from_sam import (
     parse_args, get_reference_names, count_total_reads, check_index_exists,
     get_variants, identify_aa_change, get_query_base, write_header, write_variant,
@@ -55,18 +53,6 @@ def alignmentfile(request):
 @pytest.fixture
 def reffile(request):
     return request.getfixturevalue(request.param)
-
-@pytest.fixture
-def aav2_ref_file():
-    return "tests/data/references/wtAAV2.fa"
-
-@pytest.fixture
-def aav2_ref(aav2_ref_file):
-    return SeqIO.to_dict(SeqIO.parse(aav2_ref_file, "fasta"))
-
-@pytest.fixture
-def toy_ref():
-    return SeqIO.to_dict(SeqIO.parse('tests/data//references/toy_reference.fa', "fasta"))
 
 # ## Test parse_args
 def test_parse_args_1():
