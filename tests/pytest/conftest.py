@@ -2,6 +2,7 @@ import tempfile
 import gzip
 import pytest
 import pandas as pd
+from Bio import SeqIO
 
 from scripts.utils import Substitution, Insertion, Deletion
 
@@ -24,6 +25,23 @@ def sample_df(config):
 
     return pd.DataFrame([config])
 
+#### reference fasta fixtures ####
+
+@pytest.fixture
+def aav2_ref_file():
+    return "tests/data/references/wtAAV2.fa"
+
+@pytest.fixture
+def aav2389_ref_file():
+    return "tests/data/references/wt2n496d389dna.fasta"
+
+@pytest.fixture
+def aav2_ref(aav2_ref_file):
+    return SeqIO.to_dict(SeqIO.parse(aav2_ref_file, "fasta"))
+
+@pytest.fixture
+def toy_ref():
+    return SeqIO.to_dict(SeqIO.parse('tests/data//references/toy_reference.fa', "fasta"))
 
 #### nanopore RCA fasta fixtures ####
 
@@ -152,4 +170,8 @@ def write_variants_repeated(request):
     temp.seek(0)
     return shorter, n_repeats, variants, temp
 
+#### variant_pivoted fixtures ####
+
+def aav3_pivoted():
+    'tests/data/variants/aav3_pivoted.tsv'
 
