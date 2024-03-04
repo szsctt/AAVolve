@@ -4,7 +4,7 @@ from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,
-    sort_var_names,
+    sort_var_names, get_parents,
     Substitution, Insertion, Deletion
     )
 
@@ -96,7 +96,7 @@ class TestReadVariantFile:
         assert lines == [expected_lines]
 
     def test_read_variant_file_3(self, resultfile_aav2_shorter):
-        
+
         expected_lines = {
             "pos":"1485", 
             "query_name":"AAV2_N496D", 
@@ -234,6 +234,19 @@ class TestSortVarNames:
         result = sort_var_names(input_list)
 
         assert result == expected_list
+
+class TestGetParents:
+
+    def test_get_parents(self, resultfile_aav2389_some2, resultfile_aav2389_some2_variants):
+
+        parents = get_parents(resultfile_aav2389_some2)
+        assert parents == resultfile_aav2389_some2_variants
+
+    def test_get_parents_no_parents(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as f:
+            parents = get_parents(f.name)
+        assert parents == {}
 
 
 class TestSubstituion:

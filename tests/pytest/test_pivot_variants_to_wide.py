@@ -2,45 +2,11 @@ import tempfile
 import pytest
 
 from scripts.utils import Substitution, Insertion, Deletion
-from scripts.pivot_variants_to_wide import get_parents, pivot_reads, get_reads, main
+from scripts.pivot_variants_to_wide import pivot_reads, get_reads, main
 
 def write_header(filehandle):
     filehandle.write('reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n')
     filehandle.seek(0)
-
-@pytest.fixture
-def resultfile_aav2389_some2_variants():
-    return {
-                '40:sub': {'AAV3b': Substitution(40, 'C', 'A', True),
-                           'AAV9': Substitution(40, 'C', 'A', True),
-                           'AAV8': Substitution(40, 'C', 'A', True),
-                           },
-                '44:sub': {'AAV3b': Substitution(44, 'C', 'T', False),
-                           'AAV9': Substitution(44, 'C', 'T', False),
-                           },
-                '45:sub': {'AAV9': Substitution(45, 'T', 'A', False)
-                           },
-                '46:sub': {'AAV9': Substitution(46, 'C', 'G', False)
-                           },
-                '50:sub': {'AAV8': Substitution(50, 'A', 'G', False),
-                           },
-                '53:sub': {'AAV3b': Substitution(53, 'A', 'C', False),
-                           'AAV8': Substitution(53, 'A', 'C', False),
-                           },
-        }
-
-class TestGetParents:
-
-    def test_get_parents(self, resultfile_aav2389_some2, resultfile_aav2389_some2_variants):
-
-        parents = get_parents(resultfile_aav2389_some2)
-        assert parents == resultfile_aav2389_some2_variants
-
-    def test_get_parents_no_parents(self):
-
-        with tempfile.NamedTemporaryFile(mode='w+t') as f:
-            parents = get_parents(f.name)
-        assert parents == {}
 
 
 class TestPivotReads:
@@ -232,7 +198,7 @@ class TestGetReads:
 
 class TestMain:
 
-    def test_main(self, resultfile_aav2389_some2, resultfile_aav2389_some, monkeypatch):
+    def test_main(self, resultfile_aav2389_some2, resultfile_aav2389_some):
     
         infile = resultfile_aav2389_some
         parents = resultfile_aav2389_some2
@@ -252,13 +218,7 @@ class TestMain:
 
         with tempfile.NamedTemporaryFile('w+t') as outfile_parents, tempfile.NamedTemporaryFile('w+t') as outfile_seq:
 
-            monkeypatch.setattr('sys.argv', ['script', 
-                                             '-i', infile, 
-                                             '-p', parents,
-                                             '-o', outfile_parents.name,
-                                             '-O', outfile_seq.name])
-
-            main()
+            main(['-i', infile, '-p', parents,'-o', outfile_parents.name, '-O', outfile_seq.name])
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -267,7 +227,7 @@ class TestMain:
         assert result_parents == expected_parents
         assert result_seq == expected_seq
 
-    def test_main_no_parents(self, resultfile_aav2389_some, monkeypatch):
+    def test_main_no_parents(self, resultfile_aav2389_some):
     
         infile = resultfile_aav2389_some
 
@@ -291,13 +251,9 @@ class TestMain:
             # write header for parents file
             write_header(infile_parents)
 
-            monkeypatch.setattr('sys.argv', ['script', 
-                                             '-i', infile, 
-                                             '-p', infile_parents.name,
-                                             '-o', outfile_parents.name,
-                                             '-O', outfile_seq.name])
 
-            main()
+            main(['-i', infile, '-p', infile_parents.name,
+                   '-o', outfile_parents.name, '-O', outfile_seq.name])
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -306,7 +262,7 @@ class TestMain:
         assert result_parents == expected_parents
         assert result_seq == expected_seq
 
-    def test_main_no_reads(self, resultfile_aav2389_some2, monkeypatch):
+    def test_main_no_reads(self, resultfile_aav2389_some2):
     
         parents = resultfile_aav2389_some2
 
@@ -323,13 +279,8 @@ class TestMain:
             # write header to infile_reads
             write_header(infile_reads)
 
-            monkeypatch.setattr('sys.argv', ['script', 
-                                             '-i', infile_reads.name, 
-                                             '-p', parents,
-                                             '-o', outfile_parents.name,
-                                             '-O', outfile_seq.name])
-
-            main()
+            main(['-i', infile_reads.name, '-p', parents, '-o', outfile_parents.name,
+                  '-O', outfile_seq.name])
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()

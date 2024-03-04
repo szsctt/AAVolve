@@ -159,6 +159,30 @@ def get_reference_name(filename):
 def sort_var_names(variants):
 
     return sorted(variants, key=lambda x: int(x.split(':')[0].split('_')[0]))
+
+def get_parents(parents_file):
+    """
+    Read in parents file
+    Collect variants of the same type / position using variant id
+    which consists of {pos}:{type}
+
+    Return a dict of { id: {parent_name:var}}
+    """
+    parents = {}
+    for row in read_variant_file(parents_file):
+        # get variant from row  
+        var = get_variant(row)
+        var_id = var.var_id()
+
+        # check if we've seen this variant before
+        if var_id not in parents:
+            parents[var_id] = {}
+
+        # add variant to dict
+        parent_name = row['query_name']
+        parents[var_id][parent_name] = var
+
+    return parents
  
 # internal representation of a subsitution
 class Substitution:

@@ -1,10 +1,14 @@
 import tempfile
 import gzip
 import pytest
+import pysam
 import pandas as pd
 from Bio import SeqIO
 
 from scripts.utils import Substitution, Insertion, Deletion
+from scripts.extract_features_from_sam import main as extract_features_from_sam
+from scripts.pivot_variants_to_wide import main as pivot_variants_to_wide
+
 
 #### sample csv fixtures ####
 
@@ -32,8 +36,24 @@ def aav2_ref_file():
     return "tests/data/references/wtAAV2.fa"
 
 @pytest.fixture
+def aav2n496d_ref_file():
+    return "tests/data/references/wtAAV2_N496D.fa"
+
+@pytest.fixture
 def aav2389_ref_file():
     return "tests/data/references/wt2n496d389dna.fasta"
+
+@pytest.fixture
+def aav23_ref_file():
+    return "tests/data/references/AAV2_AAV3.fa"
+
+@pytest.fixture
+def toy_ref_file():
+    return "tests/data/references/toy_reference.fa"
+
+@pytest.fixture
+def toy_reads_file():
+    return "tests/data/reads/toy_reads.fa"
 
 @pytest.fixture
 def aav2_ref(aav2_ref_file):
@@ -83,23 +103,102 @@ def fasta_file_gz(fasta_lines):
     return temp
 
 
+#### samfile fixtures ####
+@pytest.fixture
+def samfile_non_existent():
+    return "non_existent.bam"
+
+@pytest.fixture
+def samfile_aav2():
+    return "tests/data/aln/aav2_N496D.bam"
+
+@pytest.fixture
+def samfile_aav23():
+    return "tests/data/aln/aav23.bam"
+
+@pytest.fixture
+def samfile_aav2389():
+    return "tests/data/aln/aav2389.bam"
+
+@pytest.fixture
+def alignmentfile_aav2(samfile_aav2):
+    return pysam.AlignmentFile(samfile_aav2, "rb")
+
+@pytest.fixture
+def samfile_pb():
+    return "tests/data/aln/pb-shuf.bam"
+
+@pytest.fixture
+def samfile_pb_sup_sec():
+    return "tests/data/aln/pb-shuf_sup_sec.bam"
+
+@pytest.fixture
+def samfile_toy():
+    return "tests/data/aln/toy.bam"
+
+@pytest.fixture
+def samfile_aav2_subs():
+    return "tests/data/aln/aav2_subs.bam"
+
+@pytest.fixture
+def samfile(request):
+    return request.getfixturevalue(request.param)  
+
+@pytest.fixture
+def alignmentfile(request):
+
+    filename = request.getfixturevalue(request.param)
+    return pysam.AlignmentFile(filename, "rb")
+
+@pytest.fixture
+def reffile(request):
+    return request.getfixturevalue(request.param)
+
+
 #### variant fixtures ####
 
+def get_variants(sam, reference, *kwargs):
+
+    f = tempfile.NamedTemporaryFile(mode='w+t')
+    extract_features_from_sam(['-i', sam, '-r', reference, '-o', f.name, *kwargs])
+    f.seek(0)
+    return f
+
+
+@pytest.fixture()
+def resultfile_aav2(aav2_ref_file, samfile_aav2):
+
+    f = get_variants(samfile_aav2, aav2_ref_file)
+    yield f.name
+    f.close()
+    
 @pytest.fixture
-def resultfile_aav2():
-    return "tests/data/variants/aav2N496D.tsv"
+def resultfile_aav2_shorter(aav2_ref_file, samfile_aav2):
+
+    f = get_variants(samfile_aav2, aav2_ref_file, '-S')
+    yield f.name
+    f.close()
 
 @pytest.fixture
-def resultfile_aav2_shorter():
-    return "tests/data/variants/aav2N496D_shorter.tsv"
+def resultfile_aav23(aav2_ref_file, samfile_aav23):
+
+    f = get_variants(samfile_aav23, aav2_ref_file)
+    yield f.name
+    f.close()
 
 @pytest.fixture
-def resultfile_aav23():
-    return "tests/data/variants/aav23.tsv.gz"
+def resultfile_toy(toy_ref_file, samfile_toy):
+
+    f = get_variants(samfile_toy, toy_ref_file)
+    yield f.name
+    f.close()
 
 @pytest.fixture
-def resultfile_aav2389():
-    return "tests/data/variants/aav2389.tsv.gz"
+def resultfile_aav2389(aav2_ref_file, samfile_aav2389):
+    
+    f = get_variants(samfile_aav2389, aav2_ref_file)
+    yield f.name
+    f.close()
 
 @pytest.fixture
 def resultfile_aav2389_some():
@@ -130,6 +229,27 @@ def some_variants():
     vars[5].add_another_base('C')
 
     return vars
+
+@pytest.fixture
+def resultfile_aav2389_some2_variants():
+    return {
+                '40:sub': {'AAV3b': Substitution(40, 'C', 'A', True),
+                           'AAV9': Substitution(40, 'C', 'A', True),
+                           'AAV8': Substitution(40, 'C', 'A', True),
+                           },
+                '44:sub': {'AAV3b': Substitution(44, 'C', 'T', False),
+                           'AAV9': Substitution(44, 'C', 'T', False),
+                           },
+                '45:sub': {'AAV9': Substitution(45, 'T', 'A', False)
+                           },
+                '46:sub': {'AAV9': Substitution(46, 'C', 'G', False)
+                           },
+                '50:sub': {'AAV8': Substitution(50, 'A', 'G', False),
+                           },
+                '53:sub': {'AAV3b': Substitution(53, 'A', 'C', False),
+                           'AAV8': Substitution(53, 'A', 'C', False),
+                           },
+        }
 
 @pytest.fixture
 def some_variant_frequencies(some_variants):
@@ -172,6 +292,36 @@ def write_variants_repeated(request):
 
 #### variant_pivoted fixtures ####
 
-def aav3_pivoted():
-    'tests/data/variants/aav3_pivoted.tsv'
+def pivot(variants, parents):
 
+    import pdb; pdb
+    f_seq, f_parents = tempfile.NamedTemporaryFile(mode='w+t'), tempfile.NamedTemporaryFile(mode='w+t')
+    pivot_variants_to_wide(['-i', variants, '-p', parents, '-o', f_parents.name, '-O', f_seq.name])
+    f_seq.seek(0), f_parents.seek(0)
+    return f_seq, f_parents
+
+@pytest.fixture
+def aav3_pivoted_seq(resultfile_aav23):
+
+    f_seq, f_parents = pivot(resultfile_aav23, resultfile_aav23)
+    yield f_seq.name
+    f_seq.close(), f_parents.close()
+
+
+@pytest.fixture
+def aav3_pivoted_parents(resultfile_aav23):
+    f_seq, f_parents = pivot(resultfile_aav23, resultfile_aav23)
+    yield f_parents.name
+    f_seq.close(), f_parents.close()
+    
+@pytest.fixture
+def toy_pivoted_seq(resultfile_toy):
+    f_seq, f_parents = pivot(resultfile_toy, resultfile_toy)
+    yield f_seq.name
+    f_seq.close(), f_parents.close()
+
+@pytest.fixture
+def toy_pivoted_parents(resultfile_toy):
+    f_seq, f_parents = pivot(resultfile_toy, resultfile_toy)
+    yield f_parents.name
+    f_seq.close(), f_parents.close()

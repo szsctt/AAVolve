@@ -7,23 +7,29 @@
 
 import argparse
 import csv
+from sys import argv
 
-from scripts.utils import get_variant, read_variant_file, use_open, sort_var_names, get_reference_name
+from scripts.utils import get_variant, use_open, sort_var_names, get_reference_name, get_parents
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", "-i", help="input file", required=True)
-    parser.add_argument("--parents", "-p", help="parents file", required=True)
-    parser.add_argument("--remove-na", action="store_true", help = "Remove variants that don't match any parents")
-    parser.add_argument("--output-parents", "-o", help="output file with possible parents for each variant", required=True)
-    parser.add_argument("--output-seq", "-O", help="output file with sequence for each variant", required=True)
-    args = parser.parse_args()
+def main(sys_argv):
+
+    args = get_args(sys_argv)
 
     # read in the parents file
     parents = get_parents(args.parents)
 
     # pivot the reads
     pivot_reads(args.input, args.output_parents, args.output_seq, parents, args.remove_na)
+
+def get_args(sys_argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", "-i", help="input file", required=True)
+    parser.add_argument("--parents", "-p", help="parents file", required=True)
+    parser.add_argument("--remove-na", action="store_true", help = "Remove variants that don't match any parents")
+    parser.add_argument("--output-parents", "-o", help="output file with possible parents for each variant", required=True)
+    parser.add_argument("--output-seq", "-O", help="output file with sequence for each variant", required=True)
+    args = parser.parse_args(sys_argv)
+    return args
 
 def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
     """
@@ -37,7 +43,7 @@ def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
     # sort variant ids by position
     parent_var_ids = sort_var_names(parent_var_ids)
 
-    # get names of parents
+    # get names of parents, including reference
     wt_name = get_reference_name(infile)
     parent_names = [wt_name]
     for d in parents.values():
@@ -91,7 +97,7 @@ def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
 
                     # get any variant from parents to get the reference allele
                     parent_var = list(parents[parent_var_id].values())[0]
-                    # seuqnece is reference
+                    # sequnece is reference
                     row_seq.append(parent_var.refbases())
                     # parents are all those that have the wild-type allele
                     alt_parents = set((*parents[parent_var_id].keys(), 'non_parental'))
@@ -141,30 +147,6 @@ def get_reads(file_name):
         # yield the last read
         yield read_id, buffer
 
-def get_parents(parents_file):
-    """
-    Read in parents file
-    Collect variants of the same type / position using variant id
-    which consists of {pos}:{type}
-
-    Return a dict of { id: {parent_name:var}}
-    """
-    parents = {}
-    for row in read_variant_file(parents_file):
-        # get variant from row  
-        var = get_variant(row)
-        var_id = var.var_id()
-
-        # check if we'e seen this variant before
-        if var_id not in parents:
-            parents[var_id] = {}
-
-        # add variant to dict
-        parent_name = row['query_name']
-        parents[var_id][parent_name] = var
-
-    return parents
-
 if __name__ == "__main__":
-    main()
+    main(argv[1:])
 
