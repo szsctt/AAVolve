@@ -12,48 +12,6 @@ from scripts.extract_features_from_sam import (
 
 from scripts.utils import Substitution, Deletion, Insertion
 
-@pytest.fixture
-def samfile_non_existent():
-    return "non_existent.bam"
-
-@pytest.fixture
-def samfile_aav2():
-    return "tests/data/aln/aav2_N496D.bam"
-
-@pytest.fixture
-def alignmentfile_aav2(samfile_aav2):
-    return pysam.AlignmentFile(samfile_aav2, "rb")
-
-@pytest.fixture
-def samfile_pb():
-    return "tests/data/aln/pb-shuf.bam"
-
-@pytest.fixture
-def samfile_pb_sup_sec():
-    return "tests/data/aln/pb-shuf_sup_sec.bam"
-
-@pytest.fixture
-def samfile_toy():
-    return "tests/data/aln/toy.bam"
-
-@pytest.fixture
-def samfile_aav2_subs():
-    return "tests/data/aln/aav2_subs.bam"
-
-@pytest.fixture
-def samfile(request):
-    return request.getfixturevalue(request.param)  
-
-@pytest.fixture
-def alignmentfile(request):
-
-    filename = request.getfixturevalue(request.param)
-    return pysam.AlignmentFile(filename, "rb")
-
-@pytest.fixture
-def reffile(request):
-    return request.getfixturevalue(request.param)
-
 # ## Test parse_args
 def test_parse_args_1():
     """

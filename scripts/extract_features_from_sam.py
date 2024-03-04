@@ -42,9 +42,9 @@ from Bio import SeqIO
 from scripts.utils import Substitution, Deletion, Insertion
 from scripts.utils import use_open
 
-def main():
+def main(sys_args):
 
-  args = parse_args(argv[1:])
+  args = parse_args(sys_args)
 
   get_all_variants(args.i, args.r, args.o, args.must_start_before, args.must_end_after, args.smaller_output, args.aa_change_in_isolation)
   
@@ -319,4 +319,4 @@ def write_variant(read_id, variants, ref_names, filehandle, smaller = False):
             filehandle.write(var.print_line(read_id, ref_names[read_id]))
 
 if __name__ == "__main__":
-  main()
+  main(argv[1:])
