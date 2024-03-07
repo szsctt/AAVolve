@@ -37,15 +37,21 @@ def main():
     # Open variants file
     with use_open(variants_file, 'rt', newline='') as f, use_open(args.output, 'wt', newline='') as o:
         reader = csv.DictReader(f, delimiter='\t')
+        if not args.fasta:
+            o.write("count\tsequence\n")
         for i, row in enumerate(reader):
-            _, seq = apply_variants(ref, row) 
+            count, seq = apply_variants(ref, row) 
             if args.translate:
+                # pad to length that is multiple of three
+                to_add = 3 - len(seq) % 3
+                if to_add < 3:
+                    seq += 'N' * to_add
+                # translate
                 seq = Seq.translate(seq)
-            
             if args.fasta:
-                o.write(f">{i}\n{seq}\n")
+                o.write(f">seq{i}_{count}\n{seq}\n")
             else:
-                o.write(f"{seq}\n")
+                o.write(f"{count}\t{seq}\n")
 
     if args.parents:
         f.close()
@@ -62,7 +68,9 @@ def apply_variants(ref, row):
     else:
         count = 1
         if 'read_id' in row:
+            print(row['read_id'])
             del row['read_id']
+
 
     # order variants by position
     variants = sort_var_names(row.keys())
@@ -76,13 +84,22 @@ def apply_variants(ref, row):
 
         # substitution
         if vartype == 'sub':
-            pos = int(pos)  + offset
+
+            pos = int(pos)
+
+            # don't apply variants that are beyond the length of the reference
+            if pos > len(ref):
+                continue
 
             # don't apply variants that are before last_pos (e.g. deleted positions)
             if pos < last_pos:
                 continue
 
-            seq = seq[:pos] + row[var] + seq[pos+1:]
+            # account for offset
+            adj_pos = int(pos)  + offset
+
+            # apply substitution
+            seq = seq[:adj_pos] + row[var] + seq[adj_pos+1:]
             last_pos = pos
 
         # insertion
@@ -92,39 +109,49 @@ def apply_variants(ref, row):
             if row[var] == '.':
                 continue
 
-            # get position
-            pos = int(pos) + offset
+            pos = int(pos)
 
             # don't apply variants that are before last_pos (e.g. deleted positions)
             if pos < last_pos:
                 continue
 
+            # don't apply variants that are beyond the length of the reference
+            if pos > len(ref):
+                continue
+
+            # apply offset
+            adj_pos = int(pos) + offset
+
             # apply insertion
-            seq = seq[:pos] + row[var] + seq[pos:]
+            seq = seq[:adj_pos] + row[var] + seq[adj_pos:]
             offset += len(row[var])
             last_pos = pos
 
-        # deletion`
+        # deletion
         elif vartype == 'del':
-            # get position
-            start, end = pos.split("_")
-            start = int(start) + offset
-            end = int(end) + offset
 
             # deletion that doesn't have value '.' means no deletion
             if row[var] != '.':
                 continue
 
-            if start < last_pos:
+            # get position
+            start, end = pos.split("_")
+            start, end = int(start), int(end)
+
+            # don't apply variants that are beyond the length of the reference
+            if int(start) >= len(ref):
                 continue
 
-            # extra bases at the end of the read (beyond the reference)
-            # show up as insertions.  Exclude these
-            if start >= len(ref):
+            # don't apply variants that are before last_pos (e.g. deleted positions)
+            if int(start) < last_pos:
                 continue
+
+            # apply offset
+            adj_start = int(start) + offset
+            adj_end = int(end) + offset
 
             # apply deletion
-            seq = seq[:start] + seq[end:]
+            seq = seq[:adj_start] + seq[adj_end:]
             offset -= end - start
             last_pos = end
         
@@ -148,11 +175,11 @@ def create_temp_seq_file(variants, parents):
     """
 
     # read in parents
-    vars = get_parents(variants)
-    ref_name = get_reference_name(variants)
+    vars = get_parents(parents)
+    ref_name = get_reference_name(parents)
 
     f = tempfile.NamedTemporaryFile(mode='w+t')
-    with use_open(parents, 'rt') as p:
+    with use_open(variants, 'rt') as p:
         reader = csv.DictReader(p, delimiter='\t')
 
         # write header to output
@@ -177,12 +204,12 @@ def create_temp_seq_file(variants, parents):
                     raise ValueError(f"Variant {pvar} not found in parent variants file")
                 
                 # get possible parents for this variant
-                parents = row[pvar].split(',')
+                parents_row = row[pvar].split(',')
                 pos_vars = vars[pvar] # get the variant objects for this position
 
                 # get the sequences of each parent allele
                 par_seqs = []
-                for i in parents:
+                for i in parents_row:
                     # reference is not included in parents dict, so
                     # just get ref allele from any parent
                     if i == ref_name:
