@@ -176,7 +176,6 @@ def create_temp_seq_file(variants, parents):
 
     # read in parents
     vars = get_parents(parents)
-    ref_name = get_reference_name(parents)
 
     f = tempfile.NamedTemporaryFile(mode='w+t')
     with use_open(variants, 'rt') as p:
@@ -196,7 +195,7 @@ def create_temp_seq_file(variants, parents):
                 read_id = row['read_id']
                 del row['read_id']
             
-            # iterate over remaining seuqnces
+            # iterate over remaining se
             seqs = []
             for pvar in row:
 
@@ -210,20 +209,18 @@ def create_temp_seq_file(variants, parents):
                 # get the sequences of each parent allele
                 par_seqs = []
                 for i in parents_row:
-                    # reference is not included in parents dict, so
-                    # just get ref allele from any parent
-                    if i == ref_name:
-                        var = list(pos_vars.values())[0]
-                        par_seqs.append(var.refbases())
-                    # get alt allele
-                    elif i in pos_vars:
+                    # get alt allele if this is in the list of parent variants
+                    if i in pos_vars:
                         par_seqs.append(pos_vars[i].qbases())
                     # otherwise, assume it's the reference allele
                     else:
-                        pass
+                        var = list(pos_vars.values())[0]
+                        par_seqs.append(var.refbases())
 
+                # check to make sure we got at least one sequence
                 assert len(par_seqs) > 0
-                assert all([i==par_seqs[0] for i in par_seqs]) # all bases should be the same
+                # all bases should be the same
+                assert all([i==par_seqs[0] for i in par_seqs]) 
                 seqs.append(par_seqs[0])
 
             # write row to file
