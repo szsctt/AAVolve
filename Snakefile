@@ -24,7 +24,8 @@ rule all:
         expand("out/parents/assigned/{sample}_assigned-parents.tsv.gz", sample=samples.sample_name),
         expand("out/parents/freqs/{sample}_assigned-parents_freq.tsv.gz", sample=samples.sample_name),
         expand("out/parents/breaks/{sample}tsv.gz", sample=samples.sample_name),
-        expand("out/parents/counts/{sample}_parent-counts.tsv.gz", sample=samples.sample_name)
+        expand("out/parents/counts/{sample}_parent-counts.tsv.gz", sample=samples.sample_name),
+        expand("out/corrected/counts/{sample}_nt-seq-counts.tsv.gz", sample=samples.sample_name),
         #expand("out/corrected/{sample}.tsv", sample=samples.sample_name),
         #expand("out/corrected/{sample}_dmat.tsv.gz", samples=samples.sample_name),
         #expand("out/qc/{sample}_read-counts.tsv", samples=samples.sample_name)
