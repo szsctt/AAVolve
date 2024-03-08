@@ -144,9 +144,7 @@ rule distinct_parents:
         {params.outzip} > {output.counts}
 
         # rest of file
-        {params.incat} {input.reads} |\
-        tail -n+2 |\
-        cut -f 2- -d$'\\t' |\
+        python3 -m scripts.remove_first_column -i {input.reads} |\
         sort |\
         uniq -c |\
         awk -v OFS=$'\\t' '{{$1=$1}};1' |\
@@ -161,11 +159,11 @@ rule apply_variants:
         parent_variants_long = rules.combine_variants.output.combined,
         ref = get_reference
     output:
-        seqs = "out/parents/counts/{sample}_nt-seq-counts.tsv.gz"
+        seqs = "out/corrected/counts/{sample}_nt-seq-counts.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 scripts/apply_variants.py \ ## NEED TO EDIT THIS SCRIPT!!!!
+        python3 -m scripts.apply_variants \
             -v {input.variants_names_wide} \
             -p {input.parent_variants_long} \
             -r {input.ref} \
