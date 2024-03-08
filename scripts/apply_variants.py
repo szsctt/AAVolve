@@ -195,7 +195,7 @@ def create_temp_seq_file(variants, parents):
                 read_id = row['read_id']
                 del row['read_id']
             
-            # iterate over remaining se
+            # iterate over parents
             seqs = []
             for pvar in row:
 
