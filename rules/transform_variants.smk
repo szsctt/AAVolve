@@ -174,15 +174,20 @@ rule dmat_nt:
     input:
         counts = rules.apply_variants.output.seqs
     output:
-        dmat = "out/parents/counts/{sample}_dmat.tsv.gz",
-        plot = "out/parents/counts/{sample}_dmat.png"
+        dmat = "out/corrected/dmat/{sample}_{subset}-nt.tsv.gz",
+        plot = "out/corrected/dmat/{sample}_{subset}-nt.png"
     container: "docker://szsctt/lr_pybio:py310"
+    wildcard_constraints:
+        subset = "random|first|last"
     shell:
         """
-        python3 scripts/distance_matrix_nt.py \
+        python3 -m scripts.distance_matrix \
             --input {input.counts} \
             --output {output.dmat} \
-            --plot {output.plot}
+            --plot {output.plot} \
+            --distance-metric identity \
+            --max-seqs 10000 \
+            --selection {wildcards.subset}
         """
 
 def get_reads_for_counting(wildcards):
