@@ -8,3 +8,5 @@ dependencies:
   - pysam=0.22
   - biopython=1.81
   - tqdm
+  - seaborn
+  - mafft
