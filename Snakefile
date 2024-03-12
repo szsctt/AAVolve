@@ -23,11 +23,10 @@ rule all:
         expand("out/variants/pivot/{sample}_parents.tsv.gz", sample=samples.sample_name),
         expand("out/parents/assigned/{sample}_assigned-parents.tsv.gz", sample=samples.sample_name),
         expand("out/parents/freqs/{sample}_assigned-parents_freq.tsv.gz", sample=samples.sample_name),
-        expand("out/parents/breaks/{sample}tsv.gz", sample=samples.sample_name),
-        expand("out/corrected/counts/{sample}_nt-seq-counts.tsv.gz", sample=samples.sample_name),
-        expand("out/corrected/dmat/{sample}_{subset}-nt.tsv.gz", sample=samples.sample_name, subset = ("random", "first")),
-        #expand("out/corrected/{sample}_dmat.tsv.gz", samples=samples.sample_name),
-        #expand("out/qc/{sample}_read-counts.tsv", samples=samples.sample_name)
+        expand("out/parents/breaks/{sample}.tsv.gz", sample=samples.sample_name),
+        expand("out/corrected/counts/{sample}_{seqtype}-seq-counts.tsv.gz", sample=samples.sample_name, seqtype = ("aa", "nt")),
+        expand("out/corrected/dmat/{sample}_{subset}_{seqtype}-seq.tsv.gz", sample=samples.sample_name, subset = ("random", "first"), seqtype = ("aa", "nt")),
+        expand("out/qc/{sample}_read-counts.tsv", sample=samples.sample_name)
 
 include: 'rules/consensus.smk'
 include: 'rules/align.smk'

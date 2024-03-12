@@ -112,7 +112,7 @@ rule ident_breakpoints:
     input:
         in_file = rules.assign_parents.output.assigned
     output:
-        breakpoints = "out/parents/breaks/{sample}tsv.gz",
+        breakpoints = "out/parents/breaks/{sample}.tsv.gz",
         break_per_read = "out/parents/breaks/{sample}-perread.tsv.gz",
         break_per_var = "out/parents/breaks/{sample}-pervar.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
@@ -125,10 +125,11 @@ rule ident_breakpoints:
             --summary2 {output.break_per_var}
         """
 
+
 # count distinct combinations of parents
-rule distinct_parents:
+rule distinct_reads:
     input:
-        reads = rules.assign_parents.output.assigned 
+        reads = rules.assign_parents.output.assigned
     output:
         counts = "out/parents/counts/{sample}_parent-counts.tsv.gz"
     params:
@@ -155,7 +156,7 @@ rule distinct_parents:
 # apply variants to reference to get 'error-corrected' reads
 rule apply_variants:
     input:
-        variants_names_wide = rules.distinct_parents.output.counts,
+        variants_names_wide = rules.distinct_reads.output.counts,
         parent_variants_long = rules.combine_variants.output.combined,
         ref = get_reference
     output:
@@ -170,26 +171,76 @@ rule apply_variants:
             -o {output.seqs} 
         """
 
-rule dmat_nt:
+# translate corrected reads to amino acids
+rule translate_nt:
     input:
         counts = rules.apply_variants.output.seqs
     output:
-        dmat = "out/corrected/dmat/{sample}_{subset}-nt.tsv.gz",
-        plot = "out/corrected/dmat/{sample}_{subset}-nt.png"
+        counts = "out/corrected/counts/{sample}_aa-seq-translated.tsv.gz"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m scripts.translate_nt \
+            -i {input.counts} \
+            -o {output.counts}
+        """
+
+# sum counts for reads that translate to the same amino acid sequence
+rule sum_nt_translated_counts:
+    input:
+        counts = rules.translate_nt.output.counts
+    output:
+        summed = "out/corrected/counts/{sample}_aa-seq-counts.tsv.gz"
+    container: "docker://szsctt/lr_pybio:py310"
+    params:
+        cat = lambda wildcards, input: 'zcat' if input.counts.endswith('.gz') else 'cat'
+    shell:
+        """
+        # write header
+        {params.cat} {input.counts} |\
+            head -n1 |\
+            gzip > {output.summed}
+
+        {params.cat} {input.counts} |\
+            tail -n+2 |\
+            sort -k2,2 |\
+            python3 -m scripts.sum_counts |\
+            sort -k1,1nr |\
+            gzip >> {output.summed}
+        """
+
+def get_dmat_input(wildcards):
+    if wildcards.seq_type == "nt-seq":
+        return rules.apply_variants.output.seqs
+    if wildcards.seq_type == "aa-seq":
+        return "out/corrected/counts/{sample}_aa-seq-counts.tsv.gz"
+
+# make distance matrix of corrected reads - either nt or aa
+rule dmat:
+    input:
+        counts = get_dmat_input
+    output:
+        dmat = "out/corrected/dmat/{sample}_{subset}_{seq_type}.tsv.gz",
+        plot = "out/corrected/dmat/{sample}_{subset}_{seq_type}.png"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
-        subset = "random|first|last"
+        subset = "random|first|last",
+        seq_type = "nt-seq|aa-seq"
+    params:
+        distance_metric = lambda wildcards: "identity" if wildcards.seq_type == "nt-seq" else "blosum62",
+        max_seqs = 10000
     shell:
         """
         python3 -m scripts.distance_matrix \
             --input {input.counts} \
             --output {output.dmat} \
             --plot {output.plot} \
-            --distance-metric identity \
-            --max-seqs 10000 \
+            --distance-metric {params.distance_metric} \
+            --max-seqs {params.max_seqs} \
             --selection {wildcards.subset}
         """
 
+# counts reads at each stage of processing
 def get_reads_for_counting(wildcards):
     """
     Get the appropriate files for counting original reads
@@ -198,15 +249,8 @@ def get_reads_for_counting(wildcards):
     If R2C2 data, return original reads and consensus reads
     If we filtered, also return filtered reads
     """
-
-    # for C3POa, return original fastq and processed/filtered fastq
-
-    # if one of the parents, return parent sequences
-    if wildcards.sample in parents.keys():
-        return parents[wildcards.sample]
-    
     # get sequencing technology
-    tech = {k:v for k, v in zip(samples.name, samples.seq_technology)}[wildcards.sample]
+    tech = {k:v for k, v in zip(samples.sample_name, samples.seq_tech)}[wildcards.sample]
 
     # if non-R2C2, this is input reads
     # if R2C2 with filtering, this is filtered reads
@@ -214,30 +258,28 @@ def get_reads_for_counting(wildcards):
     reads = [get_reads(wildcards)]
 
     # if not R2C2, just return reads
-    if tech != 'nanopore_r2c2':
+    if tech != 'np-cc':
         return reads
 
     # for R2C2 add input reads and consensus reads
-    reads.append(get_reads_for_consensus(wildcards)[0])
-    reads.append("out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz")
+    reads.append(get_column_by_sample(wildcards, samples, "read_file"))
+    reads.append(rules.consensus.output.consensus_reads)
     
     return list(set(reads))
     
-
-'''rule count_reads:
+rule count_reads:
     input:
         input_reads = get_reads_for_counting, 
-        variants = rules.extract_variants.output.var,
+        variants = rules.extract_variants_reads.output.var,
         pivoted = rules.pivot.output.pivoted_seq, 
         distinct = rules.distinct_reads.output.counts,
-        distinct_nt = rules.distinct_nt.output.counts
+        distinct_aa = rules.sum_nt_translated_counts.output.summed,
     output:
         counts = "out/qc/{sample}_read-counts.tsv"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 scripts/count_lines.py \
+        python3 -m scripts.count_reads \
          --output {output.counts} \
          --files {input}
         """
-'''
