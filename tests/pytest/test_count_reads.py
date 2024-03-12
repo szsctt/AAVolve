@@ -87,25 +87,10 @@ def empty_pivoted_no_vars():
         yield f.name
 
 @pytest.fixture
-def counts_file():
-    with tempfile.NamedTemporaryFile(mode='w+t') as f:
-        f.write('count\tsequence\n1\tACGT\n2\tACGT\n')
-        f.seek(0)
-        yield f.name
-
-@pytest.fixture
 def gzipped_counts_file(counts_file):
     gz = gzip_file(counts_file)
     yield gz.name
     gz.close()
-
-@pytest.fixture
-def empty_counts():
-    with tempfile.NamedTemporaryFile(mode='w+t') as f:
-        # write header
-        f.write('count\tsequence\n')
-        f.seek(0)
-        yield f.name
 
 @pytest.fixture
 def empty_file():

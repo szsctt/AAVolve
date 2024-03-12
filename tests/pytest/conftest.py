@@ -324,3 +324,20 @@ def toy_pivoted_parents(resultfile_toy):
     f_seq, f_parents = pivot(resultfile_toy, resultfile_toy)
     yield f_parents.name
     f_seq.close(), f_parents.close()
+
+#### counts ####
+    
+@pytest.fixture
+def counts_file():
+    with tempfile.NamedTemporaryFile(mode='w+t') as f:
+        f.write('count\tsequence\n1\tACGT\n2\tACGT\n')
+        f.seek(0)
+        yield f.name
+
+@pytest.fixture
+def empty_counts():
+    with tempfile.NamedTemporaryFile(mode='w+t') as f:
+        # write header
+        f.write('count\tsequence\n')
+        f.seek(0)
+        yield f.name
