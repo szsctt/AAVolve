@@ -67,7 +67,7 @@ def get_file_type(file):
     with use_open(file, 'rt') as f:
         try:
             for i, l in enumerate(f):
-                parts = l.split('\t')
+                parts = l.strip().split('\t')
                 # check the first line of the file to determine the file type
                 if l.startswith('>'):
                     return 'fasta'
