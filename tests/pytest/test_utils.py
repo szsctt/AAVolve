@@ -1,4 +1,5 @@
 import tempfile
+import gzip
 import pytest
 from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
@@ -24,6 +25,21 @@ class TestUseOpen:
         
         assert result == fasta_lines
         fasta_file_gz.close()
+
+    def test_read_file_no_extension(self):
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            with gzip.open(temp.name, 'wt') as handle:
+                handle.write('test')
+            with use_open(temp.name, 'rt') as handle:
+                result = handle.read()
+        assert result == 'test'
+
+    def test_gz_extension_but_not_gzipped(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t', suffix='.gz') as temp:
+            with use_open(temp.name, 'rt') as handle:
+                result = handle.read()
+        assert result == ''
 
 class TestGetRepeatsFromR2C2:
     

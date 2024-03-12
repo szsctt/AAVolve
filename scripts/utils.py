@@ -1,15 +1,24 @@
 import gzip
 import csv
+import os
 
 def use_open(filename, *args, **kwargs):
     """
     Use gzip.open if file is gzipped
     """
     
+    # file extension is .gz, assume should be opened with gzip
     if filename.endswith('.gz'):
+      return gzip.open(filename, *args, **kwargs)
+    # if file exists, check first two bytes to see if it's gzipped
+    elif os.path.isfile(filename):
+      with open(filename, 'rb') as f:
+        magic = f.read(2)
+      if magic == b'\x1f\x8b':
         return gzip.open(filename, *args, **kwargs)
-    else:
-        return open(filename, *args, **kwargs)
+    
+    # assume non-gzipped file
+    return open(filename, *args, **kwargs)
     
 def get_repeats_from_r2c2_name(name):
 
