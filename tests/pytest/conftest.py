@@ -294,7 +294,6 @@ def write_variants_repeated(request):
 
 def pivot(variants, parents):
 
-    import pdb; pdb
     f_seq, f_parents = tempfile.NamedTemporaryFile(mode='w+t'), tempfile.NamedTemporaryFile(mode='w+t')
     pivot_variants_to_wide(['-i', variants, '-p', parents, '-o', f_parents.name, '-O', f_seq.name])
     f_seq.seek(0), f_parents.seek(0)
