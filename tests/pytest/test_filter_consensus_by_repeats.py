@@ -5,6 +5,7 @@ from sys import argv
 import pytest
 
 from scripts.filter_consensus_by_repeats import seq_generator, filter, main
+from scripts.utils import use_open
 
 class TestFilter:
 
@@ -12,16 +13,18 @@ class TestFilter:
     @pytest.mark.parametrize('min_repeats', [1, 2, 3, 4, 5])
     @pytest.mark.parametrize('out_gzipped', [True, False])
     def test_filter(self, fasta_file, min_repeats, out_gzipped):
+        # create output file with correct file extension
         if out_gzipped:
             out_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.gz')
-            out_open = gzip.open
         else:
             out_file = tempfile.NamedTemporaryFile(mode='w+t')
-            out_open = open
         
+        # call function
         filter(fasta_file.name, out_file.name, min_repeats)
+
+        # check output
         out_file.seek(0)
-        with out_open(out_file.name, 'rt') as handle:
+        with use_open(out_file.name, 'rt') as handle:
             for line in handle:
                 if line.startswith('>'):
                     name = line.strip()
