@@ -97,18 +97,20 @@ def dmat(seqs, metric):
 
 def read_input(infile, max_seqs, selection):
 
+    # check inputs
     if max_seqs < 0:
         raise ValueError('max_seqs must be non-negative')
     if selection not in ['random', 'first', 'last']:
         raise ValueError("selection must be 'random', 'first', or 'last'")
 
+    # read file
     with use_open(infile, 'rt') as handle:
         reader = csv.reader(handle, delimiter='\t')
         seqs = []
 
         # skip header
         try:
-            header = next(reader)
+            next(reader)
         except StopIteration:
             raise ValueError('Empty input file')
         
