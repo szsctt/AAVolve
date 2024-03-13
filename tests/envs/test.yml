@@ -7,6 +7,9 @@ dependencies:
   - pandas=2.0
   - pysam=0.22
   - biopython=1.81
-  - tqdm
-  - seaborn
-  - mafft
+  - tqdm=4.65
+  - seaborn=0.12
+  - mafft=7.520
+  - quarto=1.4
+  - jupyter=1.0
+  - plotly_express=0.4
