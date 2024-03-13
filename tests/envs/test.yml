@@ -13,3 +13,4 @@ dependencies:
   - quarto=1.4
   - jupyter=1.0
   - plotly_express=0.4
+  - plotly=5.19
