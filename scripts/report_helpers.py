@@ -109,31 +109,39 @@ def parent_heatmap(filename):
 
     # read in data
     df = read_assigned_parents(filename)
+
+    # reverse order of rows to get most frequent at top
+    df = df.iloc[::-1]
+
+    # get counts
     counts = df['count']
+    
+    # get a list of unique parents
     df = (
         df
           # drop count column
           .drop(columns=['count']) 
           # replace non_parental_1 etc with non_parental
-          .apply(lambda x: x.str.replace("non_parental_\d+", "non_parental", regex=True)) 
-          # replace any values with commans with "multiple"
+          .apply(lambda x: x.str.replace("non_parental_\d+", "non parental", regex=True)) 
+          # replace any values with commas with "multiple"
           .apply(lambda x: [i if ',' not in i else 'multiple' for i in x])
           ) 
     df_long = df.melt()
 
-    # get a list of unique parents
+    
     parents = list(set(df_long.value.str.split(',').explode()))
+    
     # move non_parental and multiple to the end
-    if 'non_parental' in parents:
-        parents.remove('non_parental')
-        parents.append('non_parental')
+    if 'non parental' in parents:
+        parents.remove('non parental')
+        parents.append('non parental')
     if 'multiple' in parents:
         parents.remove('multiple')
         parents.append('multiple')
 
     # convert df to numeric, with numbers between 
     # 0 and 1 corresponding to parents
-    lnsp = np.linspace(0, 1, len(parents))
+    lnsp = np.linspace(0, 1, len(parents)+1)
     conv = dict(zip(parents, lnsp))
     df_nums = df.applymap(lambda x: conv[x])
 
@@ -151,23 +159,95 @@ def parent_heatmap(filename):
             px.colors.sequential.Turbo, lnsp)
     
     # determines which values are mapped to each color
-    colorsc = [[i,j] for i,j in zip(lnsp, colors)]
+    colorsc = []
+    for i in range(len(colors)):
+        colorsc.append([lnsp[i], colors[i]])
+        colorsc.append([lnsp[i+1], colors[i]])
+
+    
+    # tick locations should be between changes in colorbar
+    tickvals = [np.mean(lnsp[i:i+2]) for i in range(len(lnsp)-1)]
 
     # x axis should just be numbers, remove :sub etc
     df_nums.columns = df_nums.columns.str.replace(":.*", "", regex=True)
     p1 = go.Heatmap(
             z=df_nums.values, 
-            x=df_nums.columns, 
+            x=numeric_position(df_nums.columns), 
             colorscale=colorsc, 
             zmin=0, zmax=1,
-            colorbar=dict(tickvals=lnsp, ticktext=parents))
+            hovertemplate='{text}<extra></extra>',
+            text = df.values,
+            colorbar=dict(tickvals=tickvals, ticktext=parents))
 
-    p2 = go.Scatter(x=counts, y=df_nums.index, mode='lines+markers')
-    fig = make_subplots(rows=1, cols=2, column_widths=[0.2, 0.8], shared_yaxes=True)
+    p2 = go.Scatter(x=counts, y=df_nums.index, mode='lines+markers', line_color='black', marker=dict(color='black'), showlegend=False)
+    fig = make_subplots(rows=1, cols=2, column_widths=[0.2, 0.8], shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.05)
     fig.add_trace(p2, row=1, col=1)
     fig.add_trace(p1, row=1, col=2)
+    fig['layout']['xaxis']['title'] = 'Count'
+    fig['layout']['yaxis']['title'] = 'Read'
+    fig['layout']['xaxis2']['title'] = 'Position in reference'
 
 
     return fig
 
 
+def plot_breakpoints(breakpoints_file, counts_file):
+
+    # get total reads passing all filters
+    counts = import_read_count_data(counts_file, 'np')
+    total_nt_reads = counts[counts['File type'] == 'Filtered non-parental variants']['Count'].to_list()[0]
+
+    # import breakpoint counts by position
+    df = pd.read_csv(breakpoints_file, delimiter='\t')
+    
+    # Normalize to total number of reads
+    df['breakpoints'] = df['breakpoints'] / total_nt_reads * 100
+    df['location'] = numeric_position(df['location'])
+
+    # make plot
+    fig = px.line(df, x='location', y='breakpoints',
+                  labels = {'breakpoints': 'Breakpoint frequency (%)',
+                            'location': 'Position in reference'},
+    )
+    return fig
+
+def plot_parent_frequencies(parents_file):
+
+    df = pd.read_csv(parents_file, delimiter='\t')
+
+    # change 'non_parental_1' etc to 'non parental'
+    df = df.apply(lambda x: x.astype(str).str.replace("non_parental_\d+", "non parental", regex=True))
+
+    # convert frequency to percentage
+    df['frequency'] = df['frequency'].astype(float) * 100
+
+    # TODO: deal with different kinds of variants at same location
+    df['variant'] = numeric_position(df['variant'])
+
+    # map parent names to colors
+    # TODO
+
+    fig = px.bar(df, x='variant', y='frequency', color='parent',
+                 labels = {'frequency': 'Parent frequency (%)',
+                           'variant': 'Position in reference',
+                           'parent': 'Parent'},
+                           )
+    
+    # remove white lines around bars
+    # https://stackoverflow.com/questions/69553283/how-to-remove-white-lines-around-bars-using-plotly-express-bar
+    fig.update_traces(marker_line_width = 0,
+                  selector=dict(type="bar"))
+
+    fig.update_layout(bargap=0,
+                  bargroupgap = 0,
+                 )
+
+    return fig
+
+def numeric_position(col):
+
+    col = col.astype(str).str.replace(":sub", "", regex=True)
+    col = col.str.replace(":ins", " ", regex=True)
+    col = col.str.replace(":del", "  ", regex=True)
+
+    return col
