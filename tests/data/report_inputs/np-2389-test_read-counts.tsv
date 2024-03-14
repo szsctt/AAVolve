@@ -1,0 +1,5 @@
+tests/data/reads/np-2389.fastq	fastq	1000
+out/variants/reads/np-2389-test.tsv.gz	variant_tsv	366
+out/variants/pivot/np-2389-test_seq.tsv.gz	pivoted_tsv	11
+out/parents/counts/np-2389-test_parent-counts.tsv.gz	distinct_read_counts	11
+out/corrected/counts/np-2389-test_aa-seq-counts.tsv.gz	distinct_read_counts	11
