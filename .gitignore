@@ -3,3 +3,6 @@
 out
 .snakemake
 .cache
+scripts/.quarto
+scripts/report_files
+scripts/report.html
