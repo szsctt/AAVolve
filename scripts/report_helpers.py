@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
-from utils import MAX_SEQS
+from scripts.utils import MAX_SEQS
 
 #### counts of reads ####
 
