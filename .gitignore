@@ -6,3 +6,5 @@ out
 scripts/.quarto
 scripts/report_files
 scripts/report.html
+.ipython
+.local
