@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
-MAX_ROWS = 10000
+from utils import MAX_SEQS
 
 #### counts of reads ####
 
@@ -50,7 +50,8 @@ def read_count_graph(df_file, seq_type):
     df = df[df['File type'] != "Distinct at amino acid level"]
             
 
-    fig = px.line(df, x='File type', y='Count', markers=True)
+    fig = px.line(df, x='File type', y='Count', markers=True,
+                  color_discrete_sequence=['black'])
     fig.update_xaxes(tickangle=90)
 
     return fig
@@ -61,7 +62,8 @@ def read_fraction_graph(df_file, seq_type):
     df = df[df['File type'] != "Distinct at nucleotide level"]
     df = df[df['File type'] != "Distinct at amino acid level"]
 
-    fig = px.line(df, x='File type', y='Fraction of reads', markers=True)
+    fig = px.line(df, x='File type', y='Fraction of reads', markers=True, 
+                  color_discrete_sequence=['black'])
     fig.update_xaxes(tickangle=90)
 
     return fig
@@ -98,12 +100,12 @@ def print_unique_aa_reads(df_file, seq_type):
 
 def read_assigned_parents(filename):
 
-    df = pd.read_csv(filename, delimiter='\t', nrows=MAX_ROWS)
+    df = pd.read_csv(filename, delimiter='\t', nrows=MAX_SEQS)
 
     return df
 
 
-def parent_heatmap(filename):
+def parent_heatmap(filename, parent_freq_file):
 
     # https://chart-studio.plotly.com/~empet/15229/heatmap-with-a-discrete-colorscale/#/
 
@@ -126,37 +128,17 @@ def parent_heatmap(filename):
           # replace any values with commas with "multiple"
           .apply(lambda x: [i if ',' not in i else 'multiple' for i in x])
           ) 
-    df_long = df.melt()
 
-    
-    parents = list(set(df_long.value.str.split(',').explode()))
-    
-    # move non_parental and multiple to the end
-    if 'non parental' in parents:
-        parents.remove('non parental')
-        parents.append('non parental')
-    if 'multiple' in parents:
-        parents.remove('multiple')
-        parents.append('multiple')
+    # get colors for each parent
+    color_dict = parent_colors(parent_freq_file)
+    parents = list(color_dict.keys())
+    colors = list(color_dict.values())
 
     # convert df to numeric, with numbers between 
     # 0 and 1 corresponding to parents
     lnsp = np.linspace(0, 1, len(parents)+1)
     conv = dict(zip(parents, lnsp))
     df_nums = df.applymap(lambda x: conv[x])
-
-    # create colormap for heatmap
-    if len(parents) < 11:
-        # for 10 or fewer parents, use safe qualitative colors
-        colors = px.colors.qualitative.Safe[:len(parents)]
-    elif len(parents) < 25:
-        # for 11-24 parents, use light24 colors
-        colors = px.colors.qualitative.Light24[:len(parents)]
-    else:
-        # sample colors from a continuous colormap
-        # this probably isn't going to look good
-        colors = px.colors.sample_colorscale(
-            px.colors.sequential.Turbo, lnsp)
     
     # determines which values are mapped to each color
     colorsc = []
@@ -179,7 +161,12 @@ def parent_heatmap(filename):
             text = df.values,
             colorbar=dict(tickvals=tickvals, ticktext=parents))
 
-    p2 = go.Scatter(x=counts, y=df_nums.index, mode='lines+markers', line_color='black', marker=dict(color='black'), showlegend=False)
+    p2 = go.Scatter(x=counts, 
+                    y=df_nums.index, 
+                    mode='lines+markers', 
+                    line_color='black', 
+                    marker=dict(color='black'), 
+                    showlegend=False)
     fig = make_subplots(rows=1, cols=2, column_widths=[0.2, 0.8], shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.05)
     fig.add_trace(p2, row=1, col=1)
     fig.add_trace(p1, row=1, col=2)
@@ -208,29 +195,32 @@ def plot_breakpoints(breakpoints_file, counts_file):
     fig = px.line(df, x='location', y='breakpoints',
                   labels = {'breakpoints': 'Breakpoint frequency (%)',
                             'location': 'Position in reference'},
+                            color_discrete_sequence=['black']
     )
     return fig
 
 def plot_parent_frequencies(parents_file):
 
+    # read data
     df = pd.read_csv(parents_file, delimiter='\t')
 
     # change 'non_parental_1' etc to 'non parental'
-    df = df.apply(lambda x: x.astype(str).str.replace("non_parental_\d+", "non parental", regex=True))
+    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
 
     # convert frequency to percentage
-    df['frequency'] = df['frequency'].astype(float) * 100
+    df['frequency'] = df['frequency'] * 100
 
     # TODO: deal with different kinds of variants at same location
     df['variant'] = numeric_position(df['variant'])
 
     # map parent names to colors
-    # TODO
+    parent_colors_dict = parent_colors(parents_file)
 
     fig = px.bar(df, x='variant', y='frequency', color='parent',
                  labels = {'frequency': 'Parent frequency (%)',
                            'variant': 'Position in reference',
                            'parent': 'Parent'},
+                 color_discrete_map=parent_colors_dict,
                            )
     
     # remove white lines around bars
@@ -243,6 +233,50 @@ def plot_parent_frequencies(parents_file):
                  )
 
     return fig
+
+def make_distance_heatmap(distance_file):
+
+    dmat = np.loadtxt(distance_file)
+
+    p = go.Heatmap(z=dmat)
+    fig = go.Figure(data=p)
+    return fig
+
+def parent_colors(parents_file):
+
+    # read data
+    df = pd.read_csv(parents_file, delimiter='\t')
+
+    # change 'non_parental_1' etc to 'non parental'
+    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
+
+    # get list of unique parents
+    parents = df['parent'].unique().tolist()
+
+    # move non_parental and multiple to the end
+    if 'non parental' in parents:
+        parents.remove('non parental')
+    parents.append('non parental')
+    if 'multiple' in parents:
+        parents.remove('multiple')
+    parents.append('multiple')
+
+    # create colormap for heatmap
+    if len(parents) < 11:
+        # for 10 or fewer parents, use safe qualitative colors
+        colors = px.colors.qualitative.Plotly[:len(parents)]
+    elif len(parents) < 25:
+        # for 11-24 parents, use light24 colors
+        colors = px.colors.qualitative.Light24[:len(parents)]
+    else:
+        # sample colors from a continuous colormap
+        # this probably isn't going to look good
+        colors = px.colors.sample_colorscale(
+            px.colors.sequential.Turbo, len(parents))
+        
+    return dict(zip(parents, colors))
+
+
 
 def numeric_position(col):
 
