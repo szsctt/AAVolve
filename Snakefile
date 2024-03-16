@@ -26,7 +26,8 @@ rule all:
         expand("out/parents/breaks/{sample}.tsv.gz", sample=samples.sample_name),
         expand("out/corrected/counts/{sample}_{seqtype}-seq-counts.tsv.gz", sample=samples.sample_name, seqtype = ("aa", "nt")),
         expand("out/corrected/dmat/{sample}_{subset}_{seqtype}-seq.tsv.gz", sample=samples.sample_name, subset = ("random", "first"), seqtype = ("aa", "nt")),
-        expand("out/qc/{sample}_read-counts.tsv", sample=samples.sample_name)
+        expand("out/qc/{sample}_read-counts.tsv", sample=samples.sample_name),
+        expand("out/qc/{sample}_report.html", sample=samples.sample_name),
 
 include: 'rules/consensus.smk'
 include: 'rules/align.smk'
