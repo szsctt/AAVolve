@@ -2,6 +2,8 @@ import gzip
 import csv
 import os
 
+MAX_SEQS = 1000
+
 def use_open(filename, *args, **kwargs):
     """
     Use gzip.open if file is gzipped

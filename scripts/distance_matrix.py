@@ -18,7 +18,7 @@ from Bio.Phylo.TreeConstruction import DistanceCalculator
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from scripts.utils import use_open
+from scripts.utils import use_open, MAX_SEQS
 
 def main():
 
@@ -27,7 +27,7 @@ def main():
     parser.add_argument('-o', '--output', help='output file', required=True)
     parser.add_argument('-p', '--plot', help='plot file')
     parser.add_argument('-d', '--distance-metric', help='distance metric', default='identity', choices=['identity', 'blosum62'])
-    parser.add_argument('-s', '--max-seqs', help="Maximum number of sequences to read", type=int, default=1000)
+    parser.add_argument('-s', '--max-seqs', help="Maximum number of sequences to read", type=int, default=MAX_SEQS)
     parser.add_argument('-x', '--selection', help='selection', default='random', choices=['random', 'first', 'last'])
     args = parser.parse_args()
 
@@ -110,31 +110,36 @@ def read_input(infile, max_seqs, selection):
 
         # skip header
         try:
-            next(reader)
+            header = next(reader)
+            # get the index of the 'count' and 'sequence' columns
+            seq_idx = header.index('sequence')
+            count_idx = header.index('count')
         except StopIteration:
             raise ValueError('Empty input file')
         
         # read rows
         for row in reader:
-            if len(row) > 1:
-                seqs.append(row[-1])
-            else:
-                seqs.append(row[0])
+            seqs.append((int(row[count_idx]), row[seq_idx]))
 
     print(f'Read {len(seqs)} sequences')
-    if len(seqs) <= max_seqs:
-        return seqs
+    if len(seqs) > max_seqs:
 
-    # downsample using specified method
-    if selection == 'random':
-        seqs = random.sample(seqs, max_seqs)
-        print(f'Randomly selected {max_seqs} sequences')
-    elif selection == 'first':
-        seqs = seqs[:max_seqs]
-        print(f'Selected first {max_seqs} sequences')
-    elif selection == 'last':
-        seqs = seqs[-max_seqs:]
-        print(f'Selected last {max_seqs} sequences')
+        # downsample using specified method
+        if selection == 'random':
+            seqs = random.sample(seqs, min(max_seqs, len(seqs)))
+            print(f'Randomly selected {max_seqs} sequences')
+        elif selection == 'first':
+            seqs = seqs[:max_seqs]
+            print(f'Selected first {max_seqs} sequences')
+        elif selection == 'last':
+            seqs = seqs[-max_seqs:]
+            print(f'Selected last {max_seqs} sequences')
+
+    # sort by count, getting highest first
+    seqs = sorted(seqs, key=lambda x: x[0], reverse=True)
+
+    # get sequences only
+    seqs = [i[1] for i in seqs]
 
     return seqs
 

@@ -11,42 +11,46 @@ class TestReadInput:
 
     def test_read_input(self):
 
-        expected_seqs = ['ACDEFGHIKLMNPQRSTVWW', 'ACDEFGHIKLMNPQRSTVWY', 'ACDEFGHIKLMNPQRSTVYY']
+        seqs = ['ACDEFGHIKLMNPQRSTVWW', 
+                         'ACDEFGHIKLMNPQRSTVWY', 
+                         'ACDEFGHIKLMNPQRSTVYY']
+        expected_seqs = list(reversed(seqs))
 
         with tempfile.NamedTemporaryFile(mode='w') as f:
 
             # write header
-            f.write('seq_id\tseq\n')
+            f.write('count\tsequence\n')
             
             # write sequences
-            for i, seq in enumerate(expected_seqs):
-                f.write(f'seq_{i}\t{seq}\n')
+            for i, seq in enumerate(seqs):
+                f.write(f'{i+1}\t{seq}\n')
             f.flush()
 
             # read sequences
-            seqs = read_input(f.name, 3, 'random')
+            seqs_random = read_input(f.name, 3, 'random')
+            seqs_first = read_input(f.name, 3, 'first')
+            seqs_last = read_input(f.name, 3, 'last')
         
         # check
-        assert len(seqs) == 3
-        assert all([i in seqs for i in expected_seqs])
+        assert seqs_first == expected_seqs
+        assert seqs_last == expected_seqs
+        # random means random sampling, but results are then sorted by count
+        assert seqs_random == expected_seqs
 
     def test_read_input_count_one_column(self):
 
         with tempfile.NamedTemporaryFile(mode='w') as f:
 
             # write header
-            f.write('seq\n')
+            f.write('sequence\n')
             
             # write sequences
             f.write('AGTC\n')
             f.flush()
 
             # read sequences
-            seqs = read_input(f.name, 1, 'random')
-        
-        # check
-        assert len(seqs) == 1
-        assert seqs[0] == 'AGTC'
+            with pytest.raises(ValueError):
+                read_input(f.name, 1, 'random')
 
     @pytest.mark.parametrize('selection', ['random', 'first', 'last'])
     @pytest.mark.parametrize('max_seqs', [5, 10])
@@ -58,11 +62,11 @@ class TestReadInput:
         with tempfile.NamedTemporaryFile(mode='w') as f:
 
             # write header
-            f.write('seq_id\tseq\n')
+            f.write('count\tsequence\n')
             
             # write sequences
             for i, seq in enumerate(sequences):
-                f.write(f'seq_{i}\t{seq}\n')
+                f.write(f'{i+1}\t{seq}\n')
             f.flush()
 
             # read sequences
@@ -73,9 +77,9 @@ class TestReadInput:
         assert all([i in sequences for i in seqs])
 
         if selection == 'first':
-            assert seqs == sequences[:max_seqs]
+            assert seqs == list(reversed(sequences[:max_seqs]))
         elif selection == 'last':
-            assert seqs == sequences[-max_seqs:]
+            assert seqs == list(reversed(sequences[-max_seqs:]))
         
             
     def test_read_input_invalid_selection(self):
@@ -99,7 +103,7 @@ class TestReadInput:
         with tempfile.NamedTemporaryFile(mode='w') as f:
 
             # write header only
-            f.write('seq_id\tseq\n')
+            f.write('count\tsequence\n')
             f.flush()
 
             # read sequences
@@ -213,11 +217,11 @@ class TestMain:
         with tempfile.NamedTemporaryFile(mode='w') as infile, tempfile.NamedTemporaryFile(mode='w') as outfile, tempfile.NamedTemporaryFile(mode='w', suffix='.png') as plotfile:
 
             # write header
-            infile.write('seq_id\tseq\n')
+            infile.write('count\tsequence\n')
             
             # write sequences
             for i, seq in enumerate(seqs):
-                infile.write(f'seq_{i}\t{seq}\n')
+                infile.write(f'{i+1}\t{seq}\n')
             infile.flush()
 
             # set sys.argv with monkeypatch
