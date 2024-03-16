@@ -73,8 +73,7 @@ rule pivot:
          --output-seq {output.pivoted_seq}
         """
 
-# assign parents using all columns so we have more columns for 
-# unambiguous identification of parent.  
+# assign parents using all columns  
 rule assign_parents:
     input:
         parents = rules.pivot.output.pivoted_parents
@@ -282,4 +281,44 @@ rule count_reads:
         python3 -m scripts.count_reads \
          --output {output.counts} \
          --files {input}
+        """
+
+
+rule report:
+    input:
+        counts = rules.count_reads.output.counts,
+        assigned_counts = rules.distinct_reads.output.counts,
+        freqs = rules.parent_freq.output.freqs,
+        breaks_per_var = rules.ident_breakpoints.output.break_per_var,
+        dmat_nt_first = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="first", allow_missing=True),
+        dmat_aa_first = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="first", allow_missing=True),
+        dmat_nt_random = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="random", allow_missing=True),
+        dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
+    output:
+        report = "out/qc/{sample}_report.html",
+        tmp_notebook = "out/qc/{sample}_report.ipynb",
+    container: "docker://szsctt/lr_pybio:py310"
+    params:
+        seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),
+        tmpdir_1 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "runtime"),
+        tmpdir_2 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "cache"),
+        tmpdir_3 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "output")
+    shell:
+        """
+        papermill scripts/report.ipynb {output.tmp_notebook} \
+            -p seq_tech {params.seq_tech} \
+            -p read_counts {input.counts} \
+            -p assigned_parents {input.assigned_counts} \
+            -p parent_frequencies {input.freqs} \
+            -p breakpoints_per_var {input.breaks_per_var} \
+            -p dmat_nt_first {input.dmat_nt_first} \
+            -p dmat_aa_first {input.dmat_aa_first} \
+            -p dmat_nt_random {input.dmat_nt_random} \
+            -p dmat_aa_random {input.dmat_aa_random}
+
+        export XDG_RUNTIME_DIR={params.tmpdir_1}
+        export XDG_CACHE_HOME={params.tmpdir_2}
+        export XDG_DATA_HOME={params.tmpdir_3}
+        mkdir -p {params.tmpdir_1} {params.tmpdir_2} {params.tmpdir_3}
+        quarto render {output.tmp_notebook} --output - > {output.report}
         """
