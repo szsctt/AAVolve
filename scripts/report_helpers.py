@@ -13,14 +13,20 @@ def import_read_count_data(df_file, seq_type):
 
     df = pd.read_csv(df_file, delimiter='\t', header=None, names=['filename', 'file_type', 'Count'])
 
-    df['Fraction of reads'] = df['Count'] / df['Count'][0]
-
     df['File type'] = df.apply(lambda row: assign_file_type(row['filename'], row['file_type'], seq_type), axis=1)
+
+    input_count = df[df['File type'] == 'Input']['Count'].tolist()
+    assert len(input_count) == 1
+    input_count = input_count[0]
+
+    df['Fraction of reads'] = df['Count'] / input_count
    
     return df
 
 def assign_file_type(file_name, file_type, seq_type):
     if file_type == "fastq":
+        return 'Input'
+    elif file_type == "fasta":
         if seq_type == "np-cc":
             dir = os.path.dirname(file_name)
             dir2 = os.path.dirname(dir)
@@ -29,8 +35,8 @@ def assign_file_type(file_name, file_type, seq_type):
                 return "Consensus"
             elif os.path.basename(dir) == "c3poa_filt":
                 return "Filtered by repeats"
-        else:
-            return 'Input'
+        elif seq_type == "sanger":
+            return "Input"   
     elif file_type == "variant_tsv":
         return "Filtered by reference coverage"
     elif file_type == "pivoted_tsv":
@@ -111,6 +117,10 @@ def parent_heatmap(filename, parent_freq_file):
 
     # read in data
     df = read_assigned_parents(filename)
+
+    if len(df) == 0:
+        print("No reads passing all filters.")
+        return None
 
     # reverse order of rows to get most frequent at top
     df = df.iloc[::-1]
