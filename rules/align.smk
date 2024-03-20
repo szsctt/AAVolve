@@ -1,3 +1,4 @@
+import numpy as np
 from scripts.snakemake_helpers import get_column_by_sample
 
 def get_reads(wildcards):
@@ -20,12 +21,12 @@ def get_reads(wildcards):
     tech = get_column_by_sample(wildcards, samples, 'seq_tech')
    
     # if nanopore r2c2, return consensus reads
-    if tech == 'nanopore_r2c2':
+    if tech == 'np-cc':
         
         # check if we want to filter for repeats
         repeats = get_column_by_sample(wildcards, samples, 'min_reps')
 
-        if math.isnan(repeats):
+        if np.isnan(repeats):
             return f"out/c3poa/{wildcards.sample}/split/R2C2_Consensus.fasta.gz"
 
         else:
