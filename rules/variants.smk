@@ -7,7 +7,7 @@ rule extract_variants_parents:
     idx = rules.align.output.idx,
     ref = get_reference
   output:
-    var = "out/variants/parents/{sample}.tsv.gz"
+    var = "out/variants/parents/{sample}.tsv.gz",
   conda: "../deps/pybio/env.yml"
   container: "docker://szsctt/lr_pybio:py310"
   wildcard_constraints:
@@ -17,7 +17,7 @@ rule extract_variants_parents:
     python3 -m scripts.extract_features_from_sam \
      -i {input.aln} \
      -r {input.ref} \
-     -o {output.var} 
+     -o {output.var}  
     """ 
 
 def get_parents(wildcards):
@@ -86,7 +86,8 @@ rule extract_variants_reads:
         first_last = get_parents_first_last,
         n_parents = get_num_parents
     output:
-        var = "out/variants/reads/{sample}.tsv.gz"
+        var = "out/variants/reads/{sample}.tsv.gz",
+        read_ids = "out/variants/reads/{sample}_read-ids.txt"
     conda: "../deps/pybio/env.yml"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
@@ -107,6 +108,7 @@ rule extract_variants_reads:
             -i {input.aln} \
             -r {input.ref} \
             -o {output.var} \
+            -O {output.read_ids} \
             --must-start-before $FIRST \
             --must-end-after $LAST \
         """
