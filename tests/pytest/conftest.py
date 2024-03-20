@@ -109,6 +109,10 @@ def samfile_non_existent():
     return "non_existent.bam"
 
 @pytest.fixture
+def samfile_aav2_wt():
+    return "tests/data/aln/aav2.bam"
+
+@pytest.fixture
 def samfile_aav2():
     return "tests/data/aln/aav2_N496D.bam"
 

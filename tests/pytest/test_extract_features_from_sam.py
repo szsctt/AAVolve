@@ -398,33 +398,62 @@ def test_write_variant_sub(smaller):
 def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after, aa_isolation, smaller_output):
 
 
-    with tempfile.NamedTemporaryFile(mode='w+t') as outfile:
+    with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
         
-        get_all_variants(samfile, reffile, outfile.name, start_before, end_after, smaller_output, aa_isolation)
+        get_all_variants(samfile, reffile, outfile.name, outfile2.name, start_before, end_after, smaller_output, aa_isolation)
 
         # read results
-        outfile.seek(0)
+        outfile.seek(0), outfile2.seek(0)
         results = outfile.file.readlines()
+        results_reads = outfile2.file.readlines()
 
 
-    # read expected results
+    # read expected results - variants
     with open(resultfile, 'rt') as handle:
-        expected_results = handle.readlines()
+        resultfile_expected = handle.readlines()
         # for smaller output, rearrange and drop columns
-        new_expected_results = []
         if smaller_output:
-            for line in expected_results:
+            expected_results = []
+            for line in resultfile_expected:
                 line = line.strip().split('\t')
                 line = [line[2], line[1], line[4], line[5], line[6]]
                 line = '\t'.join(line) + '\n'
-                new_expected_results.append(line)
-            expected_results = new_expected_results
+                expected_results.append(line)
+        else:
+            expected_results = resultfile_expected
     if end_after > 2208:
         expected_results = expected_results[0:1] 
 
-    assert results == expected_results
+    # read expected results - reads
+    #import pdb; pdb.set_trace()
+    expected_reads = [i.strip().split('\t')[2] + "\n" for i in resultfile_expected]
+    expected_reads = expected_reads[1:]
+    if end_after > 2208:
+        expected_reads = []
 
+    assert results == expected_results
+    assert results_reads == expected_reads
+
+@pytest.mark.parametrize("samfile,reffile",
+                         (("samfile_aav2_wt", "aav2_ref_file"),),
+                         indirect=['samfile', 'reffile'])    
+def test_get_all_variants_reads_match_reference(samfile, reffile):
+    """
+    Test with a set of reads that matches the reference exactly
+    """
+    
+    with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
         
+        get_all_variants(samfile, reffile, outfile.name, outfile2.name, 0, -1, False, False)
+
+        # read results
+        outfile.seek(0), outfile2.seek(0)
+
+        vars = outfile.readlines()
+        reads = outfile2.readlines()
+
+    assert vars == ['reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n']
+    assert reads == ['AAV2\n']
 
 
      

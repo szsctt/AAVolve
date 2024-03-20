@@ -46,10 +46,10 @@ def main(sys_args):
 
   args = parse_args(sys_args)
 
-  get_all_variants(args.i, args.r, args.o, args.must_start_before, args.must_end_after, args.smaller_output, args.aa_change_in_isolation)
+  get_all_variants(args.i, args.r, args.o, args.O, args.must_start_before, args.must_end_after, args.smaller_output, args.aa_change_in_isolation)
   
 
-def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_after, smaller_output, aa_isolation):
+def get_all_variants(samfile, reffile, outfile, read_outfile, must_start_before, must_end_after, smaller_output, aa_isolation):
 
   # check that index exists for samfile
   check_index_exists(samfile)
@@ -58,7 +58,9 @@ def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_afte
 
   ref_seqs = SeqIO.to_dict(SeqIO.parse(reffile, "fasta"))
 
-  with use_open(outfile, "wt") as out:
+  if read_outfile is None:
+    read_outfile = os.devnull
+  with use_open(outfile, "wt") as out, use_open(read_outfile, "wt") as read_out:
     
     # write header
     write_header(out, smaller_output)
@@ -69,6 +71,7 @@ def get_all_variants(samfile, reffile, outfile, must_start_before, must_end_afte
         
         # write variants to file
         write_variant(read_id, var, ref_names, out, smaller_output)
+        read_out.write(read_id + "\n")
 
 def parse_args(argv):
 
@@ -76,6 +79,7 @@ def parse_args(argv):
   parser.add_argument("-i", help="Sam file for input", required=True)
   parser.add_argument("-r", help="Reference file for input", required=True)
   parser.add_argument("-o", help="Tsv file for writing variants", default="variants.tsv")
+  parser.add_argument("-O", help="List of included read IDs")
   parser.add_argument('-b', "--must-start-before", type=int, default = 0, 
                       help="Reads will be excluded if they don't start "
                            "before this position in the reference")
@@ -173,7 +177,6 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
     offset = read.query_alignment_start - read.reference_start
 
     for qpos, rpos, rseq in read.get_aligned_pairs(with_seq=True):
-
     
       # skip deletions at the start of the read
       if not started_aln:
@@ -271,7 +274,6 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
     Offset is the caused by insertions and deletions from the query sequence
     that cause the read to be shifted relative to the reference
     """
-
 
     # get reference codon - asume first codon starts at posiiton 0 in reference
     rcodon_start = rpos // 3 * 3
