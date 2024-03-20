@@ -1,3 +1,4 @@
+import numpy as np
 from scripts.snakemake_helpers import get_column_by_sample
 
 # get frequency of each variant
@@ -248,23 +249,24 @@ def get_reads_for_counting(wildcards):
     If R2C2 data, return original reads and consensus reads
     If we filtered, also return filtered reads
     """
+
+    # get input reads
+    reads = [{k:v for k, v in zip(samples.sample_name, samples.read_file)}[wildcards.sample]]
+    
     # get sequencing technology
     tech = {k:v for k, v in zip(samples.sample_name, samples.seq_tech)}[wildcards.sample]
-
-    # if non-R2C2, this is input reads
-    # if R2C2 with filtering, this is filtered reads
-    # if R2C2 without filtering, this is consensus reads
-    reads = [get_reads(wildcards)]
-
     # if not R2C2, just return reads
     if tech != 'np-cc':
         return reads
 
-    # for R2C2 add input reads and consensus reads
-    reads.append(get_column_by_sample(wildcards, samples, "read_file"))
+    # for R2C2 add consensus reads
     reads.append(rules.consensus.output.consensus_reads)
+    # and filtered consensus reads if they exist
+    filt = {k:v for k, v in zip(samples.sample_name, samples.min_reps)}[wildcards.sample]
+    if filt is not None and np.isnan(filt) == False:
+        reads.append(rules.filter_consensus.output.filt)
     
-    return list(set(reads))
+    return reads
     
 rule count_reads:
     input:
@@ -300,9 +302,7 @@ rule report:
     container: "docker://szsctt/lr_pybio:py310"
     params:
         seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),
-        tmpdir_1 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "runtime"),
-        tmpdir_2 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "cache"),
-        tmpdir_3 = lambda wildcards, output: os.path.join(os.path.dirname(output.tmp_notebook), wildcards.sample, "output")
+        report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
         papermill scripts/report.ipynb {output.tmp_notebook} \
@@ -316,9 +316,14 @@ rule report:
             -p dmat_nt_random {input.dmat_nt_random} \
             -p dmat_aa_random {input.dmat_aa_random}
 
-        export XDG_RUNTIME_DIR={params.tmpdir_1}
-        export XDG_CACHE_HOME={params.tmpdir_2}
-        export XDG_DATA_HOME={params.tmpdir_3}
-        mkdir -p {params.tmpdir_1} {params.tmpdir_2} {params.tmpdir_3}
-        quarto render {output.tmp_notebook} --output - > {output.report}
+        cd out/qc
+        quarto render {params.report_basename}
         """
+
+'''
+
+        #export XDG_RUNTIME_DIR={params.tmpdir_1}
+        #export XDG_CACHE_HOME={params.tmpdir_2}
+        #export XDG_DATA_HOME={params.tmpdir_3}
+        #mkdir -p {params.tmpdir_1} {params.tmpdir_2} {params.tmpdir_3}
+        #quarto render {output.tmp_notebook} --output - > {output.report}'''
