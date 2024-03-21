@@ -324,9 +324,10 @@ class TestCheckData:
 
         # should raise
         with pytest.raises(Exception) as error:
+
             check_data(sample_df)
 
-        assert error.value.args[0] == "Sequencing technology (column 'seq_tech') must be one of 'np', 'np-cc', 'pb', 'pb-hifi'"
+        assert error.value.args[0] == "Sequencing technology (column 'seq_tech') must be one of 'np', 'np-cc', 'pb', 'pb-hifi', 'sg'"
 
     @pytest.mark.parametrize("seq_tech", SEQ_TECHS)
     def test_check_data_min_reps_added(self, sample_df, seq_tech):
