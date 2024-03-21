@@ -22,12 +22,13 @@
 import argparse
 
 from scripts.utils import (get_variants_set, get_variant, get_reference_name,
-                            use_open, read_variant_file, get_header)
+                            use_open, read_variant_file, get_header, count_lines)
 
 def main():
 
     parser = argparse.ArgumentParser("Filter variants that didn't come from any of the parents")
     parser.add_argument("--input", "-i", help="Input variants", required=True)
+    parser.add_argument("--input-read-ids", '-r', help="Read ids file", required=True)
     parser.add_argument("--parents", "-p", help="Parental variants to exclude (optional)")
     parser.add_argument("--output", "-o", help="Ouput file for high-frequency, non-parental variants", required=True)
     parser.add_argument("--output-all-freqs", "-oa", help="Output file for all frequencies")
@@ -42,7 +43,7 @@ def main():
         parents = None
         
     # get frequency of each variant
-    freqs = get_variant_frequency(args.input)
+    freqs = get_variant_frequency(args.input, args.input_read_ids)
     
     # output frequencies of all variants
     if args.output_all_freqs is not None:
@@ -71,20 +72,23 @@ def main():
     # output filtered variants
     write_variants(freqs, args.output, args.input)
     
-def get_variant_frequency(file):
+def get_variant_frequency(var_file, read_file):
     """
     Calculate the frequency of each distinct variant
     Also keep track of reference and alternate alleles for each distinct variant
     """
     
+    # get total number of reads
+    total_reads = count_lines(read_file)
+    if total_reads == 0:
+        print(f'No reads found in {read_file}')
+        return {}
+    
+    # to store counts of individual variants
     counts = dict()
-    read_ids = set() # to count total number of reads
     
     # iterate over lines of file    
-    for row in read_variant_file(file):
-    
-        # get read id
-        read_ids.add(row['query_name'])
+    for row in read_variant_file(var_file):
         
         # get variant id
         var = get_variant(row)
@@ -97,7 +101,7 @@ def get_variant_frequency(file):
         counts[var] += 1
             
     # divide each count by library size to get fraction
-    counts = {k: v/len(read_ids) for k, v in counts.items()}
+    counts = {k: v/total_reads for k, v in counts.items()}
          
     return counts
 

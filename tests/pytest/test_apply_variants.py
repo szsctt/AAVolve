@@ -93,18 +93,25 @@ class TestApplyVariants:
         """
         Get variants of AAV3 relative to AAV2, then apply them to AAV2 to get back to AAV3
         """
-
+        
         refs = read_fa(aav23_ref_file)
 
+        # reconstruct AAV2
         with open(aav3_pivoted_seq,  'rt') as f:
+            
             header = f.readline().strip().split('\t')
-            row = f.readline().strip().split('\t')
-            variants = dict(zip(header, row))
+            row_aav2 = f.readline().strip().split('\t')
+            row_aav3 = f.readline().strip().split('\t')
+            variants_aav2 = dict(zip(header, row_aav2))
+            variants_aav3 = dict(zip(header, row_aav3))
 
-        count, seq = apply_variants(refs['AAV2'], variants)
+        count_aav2, seq_aav2 = apply_variants(refs['AAV2'], variants_aav2)
+        count_aav3, seq_aav3 = apply_variants(refs['AAV2'], variants_aav3)
 
-        assert seq == refs['AAV3']
-        assert count == 1
+        assert seq_aav2 == refs['AAV2']
+        assert seq_aav3 == refs['AAV3']
+        assert count_aav2 == 1
+        assert count_aav3 == 1
         
     def test_apply_variants_round_trip_2(self, toy_ref_file, toy_reads_file, toy_pivoted_seq):
         """
@@ -135,13 +142,12 @@ class TestCreateTempSeqFile:
         """
         Test that create_temp_seq_file creates a file with the expected sequence
         """
-
         # get expected file
         with use_open(aav3_pivoted_seq, 'rt') as f:
             expected = f.readlines()
 
         # run fucntion and read result
-        res = create_temp_seq_file(aav3_pivoted_parents, resultfile_aav23)
+        res = create_temp_seq_file(aav3_pivoted_parents, resultfile_aav23[0])
         result = res.readlines()
 
         # check
@@ -160,7 +166,7 @@ class TestCreateTempSeqFile:
             expected = f.readlines()
 
         # run function and read result
-        res = create_temp_seq_file(toy_pivoted_parents, resultfile_toy)
+        res = create_temp_seq_file(toy_pivoted_parents, resultfile_toy[0])
         result = res.readlines()
 
         # check
@@ -246,23 +252,23 @@ class TestMain:
         # get sequence of AAV2 and AAV3
         refs = read_fa(aav23_ref_file)
 
-        expected_seq = refs['AAV3']
+        expected_seqs = refs['AAV2'], refs['AAV3']
         # translate if expected
         if translate:
-            expected_seq = Seq.translate(expected_seq)
+            expected_seqs = [Seq.translate(i) for i in expected_seqs]
         
         # reproduce expected output
         if fasta_output:
-            expected = [f'>seq0_1\n', f'{expected_seq}\n']
+            expected = [f'>seq0_1\n', f'{expected_seqs[0]}\n', f'>seq1_1\n', f'{expected_seqs[1]}\n']
         else:
-            expected = ['count\tsequence\n', f'1\t{expected_seq}\n'] 
+            expected = ['count\tsequence\n', f'1\t{expected_seqs[0]}\n', f'1\t{expected_seqs[1]}\n']
         
         # run main
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
 
             # set sys.argv with monkeypatch
             if from_parent_names:
-                args = ['main', '-v', aav3_pivoted_parents, '-p', resultfile_aav23, '-r', aav2_ref_file, '-o', f.name]
+                args = ['main', '-v', aav3_pivoted_parents, '-p', resultfile_aav23[0], '-r', aav2_ref_file, '-o', f.name]
             else:
                 args = ['main', '-v', aav3_pivoted_seq, '-r', aav2_ref_file, '-o', f.name]
             if translate:

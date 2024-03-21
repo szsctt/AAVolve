@@ -1,5 +1,4 @@
-import numpy as np
-from scripts.snakemake_helpers import get_column_by_sample
+from scripts.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
 
 # get frequency of each variant
 # also get non-parental variants of high frequency. These can be 
@@ -8,16 +7,18 @@ rule variant_frequency:
     input:
         parents = lambda wildcards: (expand("out/variants/parents/{parent}.tsv.gz", 
                                                                     parent=get_column_by_sample(wildcards, samples, "parent_name"))),
-        library = "out/variants/reads/{sample}.tsv.gz"
+        library = rules.extract_variants_reads.output.var,
+        library_read_ids = rules.extract_variants_reads.output.read_ids,
     output:
         high_freq = "out/variants/frequency/{sample}_high.tsv.gz",
         all = "out/variants/frequency/{sample}_all.tsv.gz",
         parental = "out/variants/frequency/{sample}_parents.tsv.gz"
     wildcard_constraints:
-        sample = "|".join(samples.sample_name)
+        sample = "|".join(samples.sample_name),
     params:
         freq = lambda wildcards: f"-f {get_column_by_sample(wildcards, samples, 'non_parental_freq')}",
         input = lambda wildcards, input: f"-i {input.library}",
+        input_read_ids = lambda wildcards, input: f"-r {input.library_read_ids}",
         parents = lambda wildcards, input: f"-p {input.parents}",
         high_freq = lambda wildcards, output: f"-o {output.high_freq}",
         all= lambda wildcards, output: f"-oa {output.all}",
@@ -57,6 +58,7 @@ rule combine_variants:
 rule pivot:
     input:
         library = rules.variant_frequency.input.library,
+        library_read_ids = rules.extract_variants_reads.output.read_ids,
         parents = rules.combine_variants.output.combined
     output:
         pivoted_parents = "out/variants/pivot/{sample}_parents.tsv.gz",
@@ -68,6 +70,7 @@ rule pivot:
         """
         python3 -m scripts.pivot_variants_to_wide \
          -i {input.library} \
+         -r {input.library_read_ids} \
          -p {input.parents} \
          --remove-na \
          --output-parents {output.pivoted_parents} \
@@ -158,7 +161,7 @@ rule apply_variants:
     input:
         variants_names_wide = rules.distinct_reads.output.counts,
         parent_variants_long = rules.combine_variants.output.combined,
-        ref = get_reference
+        ref = lambda wildcards: get_reference(wildcards, samples)
     output:
         seqs = "out/corrected/counts/{sample}_nt-seq-counts.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
@@ -209,16 +212,10 @@ rule sum_nt_translated_counts:
             gzip >> {output.summed}
         """
 
-def get_dmat_input(wildcards):
-    if wildcards.seq_type == "nt-seq":
-        return rules.apply_variants.output.seqs
-    if wildcards.seq_type == "aa-seq":
-        return "out/corrected/counts/{sample}_aa-seq-counts.tsv.gz"
-
 # make distance matrix of corrected reads - either nt or aa
 rule dmat:
     input:
-        counts = get_dmat_input
+        counts = lambda wildcards: get_dmat_input(wildcards, rules.apply_variants.output.seqs, "out/corrected/counts/{sample}_aa-seq-counts.tsv.gz")
     output:
         dmat = "out/corrected/dmat/{sample}_{subset}_{seq_type}.tsv.gz",
         plot = "out/corrected/dmat/{sample}_{subset}_{seq_type}.png"
@@ -240,49 +237,27 @@ rule dmat:
             --selection {wildcards.subset}
         """
 
-# counts reads at each stage of processing
-def get_reads_for_counting(wildcards):
-    """
-    Get the appropriate files for counting original reads
-    If not R2C2 data, just return result of get_reads(wildcards)
-
-    If R2C2 data, return original reads and consensus reads
-    If we filtered, also return filtered reads
-    """
-
-    # get input reads
-    reads = [{k:v for k, v in zip(samples.sample_name, samples.read_file)}[wildcards.sample]]
-    
-    # get sequencing technology
-    tech = {k:v for k, v in zip(samples.sample_name, samples.seq_tech)}[wildcards.sample]
-    # if not R2C2, just return reads
-    if tech != 'np-cc':
-        return reads
-
-    # for R2C2 add consensus reads
-    reads.append(rules.consensus.output.consensus_reads)
-    # and filtered consensus reads if they exist
-    filt = {k:v for k, v in zip(samples.sample_name, samples.min_reps)}[wildcards.sample]
-    if filt is not None and np.isnan(filt) == False:
-        reads.append(rules.filter_consensus.output.filt)
-    
-    return reads
     
 rule count_reads:
     input:
-        input_reads = get_reads_for_counting, 
-        variants = rules.extract_variants_reads.output.var,
+        input_reads = lambda wildcards: get_reads_for_counting(wildcards, samples, rules.consensus.output.consensus_reads, rules.filter_consensus.output.filt), 
+        variants = rules.extract_variants_reads.output.read_ids,
         pivoted = rules.pivot.output.pivoted_seq, 
         distinct = rules.distinct_reads.output.counts,
         distinct_aa = rules.sum_nt_translated_counts.output.summed,
     output:
         counts = "out/qc/{sample}_read-counts.tsv"
     container: "docker://szsctt/lr_pybio:py310"
+    params:
+        input_file = lambda wildcards, input: format_input_reads(input.input_reads),
+        variants = lambda wildcards, input: f"--variant-read-ids {input.variants}",
+        pivoted = lambda wildcards, input: f"--pivoted-tsv-files {input.pivoted}",
+        distinct = lambda wildcards, input: f"--distinct-read-counts-files {input.distinct} {input.distinct_aa}",
     shell:
         """
         python3 -m scripts.count_reads \
          --output {output.counts} \
-         --files {input}
+         {params}
         """
 
 

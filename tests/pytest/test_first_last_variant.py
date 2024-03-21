@@ -11,7 +11,8 @@ class TestGetFirstLastVariant:
         ("resultfile_aav2389", 40, 2202),
     ], indirect=["resultfile"])
     def test_get_first_last_variant(self, resultfile, expected_first, expected_last):
-        first, last = get_first_last_variant(resultfile)
+
+        first, last = get_first_last_variant(resultfile[0])
         assert first == expected_first
         assert last == expected_last
 

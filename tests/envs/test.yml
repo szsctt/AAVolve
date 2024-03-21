@@ -15,3 +15,4 @@ dependencies:
   - plotly_express=0.4
   - plotly=5.19
   - papermill=2.5
+  - snakemake-minimal=7

@@ -2,7 +2,7 @@ import tempfile
 import gzip
 import pytest
 
-from scripts.count_reads import get_file_type, count_fasta, count_fastq, count_variant_tsv, count_pivoted_tsv, main
+from scripts.count_reads import count_fasta, count_fastq, count_variant_read_ids, count_pivoted_tsv, main
 
 @pytest.fixture
 def write_fa_no_suffix():
@@ -52,16 +52,14 @@ def empty_fq():
 
 @pytest.fixture
 def gzipped_variants(resultfile_aav2):
-    gz = gzip_file(resultfile_aav2)
+    gz = gzip_file(resultfile_aav2[0])
     yield gz.name
     gz.close()
 
 @pytest.fixture
 def empty_variants():
     with tempfile.NamedTemporaryFile(mode='w+t') as f:
-        # write header
-        f.write('reference_name\tpos\tquery_name\tvar\tref_base\tquery_bases\taa_change\n')
-        f.seek(0)
+
         yield f.name
 
 @pytest.fixture
@@ -101,37 +99,6 @@ def empty_file():
 def input_file(request):
     return request.getfixturevalue(request.param)
 
-class TestGetFileType:
-
-    @pytest.mark.parametrize("input_file,expected", (
-            ('aav2_ref_file', "fasta"),
-            ('aav2389_ref_file', "fasta"),
-            ('write_fa_no_suffix', "fasta"),
-            ('write_fna', "fasta"),
-            ('empty_fa', 'fasta'),
-            ('np_2389_reads', "fastq"),
-            ('np_cc_aav2_reads', "fastq"),
-            ('gzipped_reads', "fastq"),
-            ('empty_fq', 'fastq'),
-            ('resultfile_aav2', 'variant_tsv'),
-            ('resultfile_aav2_shorter', 'variant_tsv'),
-            ('gzipped_variants', 'variant_tsv'),
-            ('empty_variants', 'variant_tsv'),
-            ('aav3_pivoted_seq', 'pivoted_tsv'),
-            ('gzipped_pivoted_variants', 'pivoted_tsv'),
-            ('empty_pivoted', 'pivoted_tsv'),
-            ('empty_pivoted_no_vars', 'pivoted_tsv'),
-            ('counts_file', 'distinct_read_counts'),
-            ('gzipped_counts_file', 'distinct_read_counts'),
-            ('empty_counts', 'distinct_read_counts'),
-            ('empty_file', 'unknown'),
-            ('samfile_toy', 'unknown'),
-
-    ), indirect=['input_file'])
-    def test_get_file_type(self, input_file, expected):
-        
-        assert get_file_type(input_file) == expected
-
 class TestCountFasta:
 
     @pytest.mark.parametrize("input_file,expected", (
@@ -160,6 +127,9 @@ class TestCountFasta:
 
     ), indirect=['input_file'])
     def test_count_fasta(self, input_file, expected):
+
+        if len(input_file) == 2:
+            input_file = input_file[0]
         
         assert count_fasta(input_file) == expected
 
@@ -191,31 +161,37 @@ class TestCountFastq:
 
     ), indirect=['input_file'])
     def test_count_fastq(self, input_file, expected):
+
+        if len(input_file) == 2:
+            input_file = input_file[0]
         
         assert count_fastq(input_file) == expected
 
-class TestCountVariantTsv:
+class TestCountVariantReadFile:
 
     @pytest.mark.parametrize("input_file,expected", (
             ('resultfile_aav2', 1),
             ('resultfile_aav2_shorter', 1),
-            ('gzipped_variants', 1),
-            ('resultfile_aav23', 1),
-            ('resultfile_toy', 11),
+            ('gzipped_variants', 2),
+            ('resultfile_aav23', 2),
+            ('resultfile_toy', 12),
             ('empty_variants', 0),
 
     ), indirect=['input_file'])
-    def test_count_variant_tsv(self, input_file, expected):
+    def test_count_variant_read_ids(self, input_file, expected):
+
+        if len(input_file) == 2:
+            input_file = input_file[1]
         
-        assert count_variant_tsv(input_file) == expected
+        assert count_variant_read_ids(input_file) == expected
 
 class TestCountPivotedTsv:
 
     @pytest.mark.parametrize("input_file,expected", (
-            ('aav3_pivoted_seq', 1),
-            ('gzipped_pivoted_variants', 1),
-            ('toy_pivoted_seq', 11),
-            ('toy_pivoted_parents', 11),
+            ('aav3_pivoted_seq', 2),
+            ('gzipped_pivoted_variants', 2),
+            ('toy_pivoted_seq', 12),
+            ('toy_pivoted_parents', 12),
             ('empty_pivoted', 0),
             ('empty_pivoted_no_vars', 0),
             ('counts_file', 2),
@@ -228,41 +204,38 @@ class TestCountPivotedTsv:
 
 class TestMain:
 
-    @pytest.mark.parametrize("input_file,expected_file_type,expected_count", (
-            ('aav2_ref_file', "fasta", 1),
-            ('aav2389_ref_file', "fasta", 4),
-            ('write_fa_no_suffix', "fasta", 2),
-            ('write_fna', "fasta", 2),
-            ('empty_fa', 'fasta', 0),
-            ('np_2389_reads', "fastq", 1000),
-            ('np_cc_aav2_reads', "fastq", 250),
-            ('gzipped_reads', "fastq", 1000),
-            ('empty_fq', 'fastq', 0),
-            ('resultfile_aav2', 'variant_tsv', 1),
-            ('resultfile_aav2_shorter', 'variant_tsv', 1),
-            ('gzipped_variants', 'variant_tsv', 1),
-            ('empty_variants', 'variant_tsv', 0),
-            ('aav3_pivoted_seq', 'pivoted_tsv', 1),
-            ('gzipped_pivoted_variants', 'pivoted_tsv', 1),
-            ('empty_pivoted', 'pivoted_tsv', 0),
-            ('empty_pivoted_no_vars', 'pivoted_tsv', 0),
-            ('counts_file', 'distinct_read_counts', 2),
-            ('gzipped_counts_file', 'distinct_read_counts', 2),
-            ('empty_counts', 'distinct_read_counts', 0),
-            ('empty_file', 'unknown', 0),
-            ('samfile_toy', 'unknown', 0),
+    @pytest.mark.parametrize("flag,input_file,expected_file_type,expected_count", (
+            ('--fasta-files', 'aav2_ref_file', "fasta", 1),
+            ('--fasta-files', 'aav2389_ref_file', "fasta", 4),
+            ('--fasta-files', 'write_fa_no_suffix', "fasta", 2),
+            ('--fasta-files', 'write_fna', "fasta", 2),
+            ('--fasta-files', 'empty_fa', 'fasta', 0),
+            ('--fastq-files', 'np_2389_reads', "fastq", 1000),
+            ('--fastq-files','np_cc_aav2_reads', "fastq", 250),
+            ('--fastq-files','gzipped_reads', "fastq", 1000),
+            ('--fastq-files','empty_fq', 'fastq', 0),
+            ('--variant-read-ids', 'resultfile_aav2', 'variant_tsv', 1),
+            ('--variant-read-ids', 'resultfile_aav2_shorter', 'variant_tsv', 1),
+            ('--variant-read-ids', 'gzipped_variants', 'variant_tsv', 2),
+            ('--variant-read-ids', 'empty_variants', 'variant_tsv', 0),
+            ('--pivoted-tsv-files', 'aav3_pivoted_seq', 'pivoted_tsv', 2),
+            ('--pivoted-tsv-files', 'gzipped_pivoted_variants', 'pivoted_tsv', 2),
+            ('--pivoted-tsv-files', 'empty_pivoted', 'pivoted_tsv', 0),
+            ('--pivoted-tsv-files', 'empty_pivoted_no_vars', 'pivoted_tsv', 0),
+            ('--distinct-read-counts-files', 'counts_file', 'distinct_read_counts', 2),
+            ('--distinct-read-counts-files', 'gzipped_counts_file', 'distinct_read_counts', 2),
+            ('--distinct-read-counts-files', 'empty_counts', 'distinct_read_counts', 0),
     ), indirect=['input_file'])
-    def test_main(self, input_file, expected_file_type, expected_count, monkeypatch):
+    def test_main(self, flag, input_file, expected_file_type, expected_count, monkeypatch):
+
+        if len(input_file) == 2:
+            input_file = input_file[1]
         
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
             # set sys.argv
-            monkeypatch.setattr('sys.argv', ['count_reads.py', '--output', f.name, '--files', input_file])
+            monkeypatch.setattr('sys.argv', ['count_reads.py', '--output', f.name, flag, input_file])
 
             # run main
-            if expected_file_type == "unknown":
-                with pytest.raises(ValueError):
-                    main()
-                return
             main()
 
             # check output
@@ -273,13 +246,18 @@ class TestMain:
         
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
             # set sys.argv
-            monkeypatch.setattr('sys.argv', ['count_reads.py', '--output', f.name, '--files', write_fna, np_2389_reads, resultfile_aav2, aav3_pivoted_seq, counts_file])
+            monkeypatch.setattr('sys.argv', ['count_reads.py', '--output', f.name, 
+                                             '--fasta-files', write_fna, 
+                                             '--fastq-files', np_2389_reads, 
+                                             '--variant-read-ids', resultfile_aav2[1], 
+                                             '--pivoted-tsv-files', aav3_pivoted_seq, 
+                                             '--distinct-read-counts-files', counts_file])
 
             # run main
             main()
 
             # check output
             f.seek(0)
-            assert f.read() == f"{write_fna}\tfasta\t2\n{np_2389_reads}\tfastq\t1000\n{resultfile_aav2}\tvariant_tsv\t1\n{aav3_pivoted_seq}\tpivoted_tsv\t1\n{counts_file}\tdistinct_read_counts\t2\n"
+            assert f.read() == f"{np_2389_reads}\tfastq\t1000\n{write_fna}\tfasta\t2\n{resultfile_aav2[1]}\tvariant_tsv\t1\n{aav3_pivoted_seq}\tpivoted_tsv\t2\n{counts_file}\tdistinct_read_counts\t2\n"
 
 

@@ -18,31 +18,34 @@ FQ_EXTS = {'.fq', '.fastq'}
 def main():
     
     parser = argparse.ArgumentParser(description='Count the number of reads in files')
-    parser.add_argument('--files', type=str, nargs='*', help='files to count reads in', default=[])
+    parser.add_argument('--fastq-files', type=str, nargs='*', help='fastq files to count reads in', default=[])
+    parser.add_argument('--fasta-files', type=str, nargs='*', help='fasta files to count reads in', default=[])
+    parser.add_argument('--variant-read-ids', type=str, nargs='*', help='variant read id files to count reads in', default=[])
+    parser.add_argument('--pivoted-tsv-files', type=str, nargs='*', help='pivoted tsv files to count reads in', default=[])
+    parser.add_argument('--distinct-read-counts-files', type=str, nargs='*', help='distinct read counts files to count reads in', default=[])
     parser.add_argument('-o', '--output', type=str, help='output file')
     args = parser.parse_args()
 
     # count the number of reads in each file
     # generate lines for tsv with (filename, filetype, count)
     lines = []
-    for file in args.files:
-        print(f"Working on file {file} of type {get_file_type(file)}")
-        file_type = get_file_type(file)
-        if file_type == 'fasta':
-            count = count_fasta(file)
-        elif file_type == 'fastq':
-            count = count_fastq(file)
-        elif file_type == 'variant_tsv':
-            count = count_variant_tsv(file)
-        elif file_type == 'pivoted_tsv':
-            count = count_pivoted_tsv(file)
-        elif file_type == 'distinct_read_counts':
-            count = count_pivoted_tsv(file)
-        else:
-            raise ValueError('Unknown file type: {}'.format(file_type))
+    for file in args.fastq_files:
+        count = count_fastq(file)
+        lines.append([file, 'fastq', count])
+    for file in args.fasta_files:
+        count = count_fasta(file)
+        lines.append([file, 'fasta', count])
+    for file in args.variant_read_ids:
+        count = count_variant_read_ids(file)
+        lines.append([file, 'variant_tsv', count])
+    for file in args.pivoted_tsv_files:
+        count = count_pivoted_tsv(file)
+        lines.append([file, 'pivoted_tsv', count])
+    for file in args.distinct_read_counts_files:
+        count = count_pivoted_tsv(file)
+        lines.append([file, 'distinct_read_counts', count])
 
-        lines.append([file, file_type, count])
-
+    # print if no output file specified
     if args.output is None:
         for line in lines:
             print('\t'.join(map(str, line)))
@@ -52,51 +55,6 @@ def main():
     with open(args.output, 'wt') as f:
         for line in lines:
             f.write('\t'.join(map(str, line)) + '\n')
-
-def get_file_type(file):
-
-    # check file extension
-    ext = os.path.splitext(file)[1]
-    if ext == '.gz':
-        ext = os.path.splitext(os.path.splitext(file)[0])[1]
-    if ext in FA_EXTS:
-        return 'fasta'
-    if ext in FQ_EXTS:
-        return 'fastq'
-
-    with use_open(file, 'rt') as f:
-        try:
-            for i, l in enumerate(f):
-                parts = l.strip().split('\t')
-                # check the first line of the file to determine the file type
-                if l.startswith('>'):
-                    return 'fasta'
-                if l.startswith('@'):
-                    return 'fastq'
-                # long form of variant file
-                if l.startswith('reference_name'):
-                    return 'variant_tsv'
-                # short form of variant file
-                if l.startswith('query_name'):
-                    return 'variant_tsv'
-                # pivoted reads file
-                if l.startswith('read_id'):
-                    return 'pivoted_tsv'
-                # counts of distinct reads
-                if len(parts) == 2:
-                    return 'distinct_read_counts'
-                if 'count' in parts:
-                    return 'distinct_read_counts'
-                # if we have read the first 100 lines and not found a file type, give up
-                if i > 100:
-                    break
-        # if not a text file, return unknown
-        except UnicodeDecodeError:
-            pass
-
-    # if we have not found a file type, return unknown  
-    return 'unknown'
-
 
 def count_fasta(file):
 
@@ -124,22 +82,12 @@ def count_fastq(file):
             pass
 
     return count
-    
 
-def count_variant_tsv(file):
-    
-    prev_read = ''
-    count = -1 # account for header
+def count_variant_read_ids(file):
+
     # iterate over lines of file
     with use_open(file, 'rt') as f:
-        for l in f:
-            # get read name from line
-            parts = l.split('\t')
-            read = parts[2]
-            # count every time we see a different read
-            if read != prev_read:
-                count += 1
-                prev_read = read
+        count = sum(1 for line in f if line != '')
 
     return count
 

@@ -19,11 +19,12 @@ def main(sys_argv):
     parents = get_parents(args.parents)
 
     # pivot the reads
-    pivot_reads(args.input, args.output_parents, args.output_seq, parents, args.remove_na)
+    pivot_reads(args.input, args.read_ids, args.output_parents, args.output_seq, parents, args.remove_na)
 
 def get_args(sys_argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", "-i", help="input file", required=True)
+    parser.add_argument('--read-ids', '-r', help='read ids file', required=True)
     parser.add_argument("--parents", "-p", help="parents file", required=True)
     parser.add_argument("--remove-na", action="store_true", help = "Remove variants that don't match any parents")
     parser.add_argument("--output-parents", "-o", help="output file with possible parents for each variant", required=True)
@@ -31,7 +32,7 @@ def get_args(sys_argv):
     args = parser.parse_args(sys_argv)
     return args
 
-def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
+def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remove_na):
     """
     Write one line per read to outfile
     Columns in outfile are read_id, variant1, variant2, variant3, ...
@@ -64,7 +65,7 @@ def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
         writer_seq.writerow(header)
 
         # iterate over reads
-        for read_id, read in get_reads(infile):
+        for read_id, read in get_reads(infile, in_read_ids):
             
             # start new row with read id
             row_seq, row_par = [read_id], [read_id]
@@ -112,40 +113,70 @@ def pivot_reads(infile, outfile_parents, outfile_seq, parents, remove_na):
             writer_par.writerow(row_par)
             writer_seq.writerow(row_seq)
 
+def collect_read_vars(file_name):
 
-def get_reads(file_name):
+    with use_open(file_name, "rt") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+
+        # collect variants for one read at a time
+        rid, vars = '', {}
+        for row in reader:
+            
+            # if this is a new read, yield
+            if row['query_name'] != rid:
+                if len(vars) > 0:
+                    yield rid, vars
+                rid, vars = row['query_name'], {}
+
+            # get variants from line
+            var = get_variant(row)
+            vars[var.var_id()] = var
+
+    # yield the last read
+    if len(vars) > 0:
+        yield rid, vars
+
+
+def get_read_id(file_name):
+
+    with open(file_name, "rt") as handle:
+        for line in handle:
+            rid = line.strip()
+            if rid != '':
+                yield rid
+
+
+def get_reads(file_name, in_read_ids):
     """
     Collect the variants from each read in the input file
     """
 
-    with use_open(file_name, "rt") as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        
-        # get first variant and read id
+    reader = collect_read_vars(file_name)
+    read_ids = get_read_id(in_read_ids)
+    var_read_id, vars, rid = "", {}, ""
+
+    for var_read_id, vars in reader:
+        # get read id from read id file
+        rid = next(read_ids)
+
+        # check to see if this read id is in the input file
+        while var_read_id != rid:
+            yield rid, {}
+            rid = next(read_ids)
+        yield var_read_id, vars
+    
+    # yield any read ids after end of reads with variants
+    try:
+        rid = next(read_ids)
+    except StopIteration:
+        return
+
+    while var_read_id != rid:
+        yield rid, {}
         try:
-            line = next(reader)
+            rid = next(read_ids)
         except StopIteration:
             return
-        read_id = line['query_name']
-        var = get_variant(line)
-        buffer = {var.var_id(): var}
-        
-        for row in reader:
-
-            # get variant from row
-            var = get_variant(row)
-
-            # check if we're still on the same read
-            if row['query_name'] == read_id:
-                buffer[var.var_id()] = var
-            # if not, yield the read and start a new buffer
-            else:
-                yield read_id, buffer
-                read_id = row['query_name']
-                buffer = {var.var_id(): var}
-
-        # yield the last read
-        yield read_id, buffer
 
 if __name__ == "__main__":
     main(argv[1:])

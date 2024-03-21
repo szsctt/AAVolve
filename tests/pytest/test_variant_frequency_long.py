@@ -3,6 +3,7 @@ import pytest
 
 from scripts.variant_frequency_long import get_variant_frequency, write_freqs, write_variants, main
 
+
 class TestGetVariantFrequency:
 
     @pytest.mark.parametrize("write_vars", 
@@ -12,39 +13,45 @@ class TestGetVariantFrequency:
     def test_get_variant_frequency(self, write_vars):
         
         # get variants
-        _, expected_vars, temp = write_vars
+        _, expected_vars, temp_vars, temp_rids = write_vars
         expected_counts = {var: 1 for var in expected_vars}
 
         # get frequency
-        counts = get_variant_frequency(temp.name)
+        counts = get_variant_frequency(temp_vars.name, temp_rids.name)
 
         # check
         assert counts == expected_counts
 
-        # clean up
-        temp.close()
-
-    @pytest.mark.parametrize("write_variants_repeated", 
-                             [(True, (1,2,3,4,5,6), 'some_variants'), 
-                              (False, (1,2,3,4,5,6), 'some_variants'),
-                              (True, (2,2,2,2,2,2), 'some_variants'), 
-                              (False, (2,2,2,2,2,2), 'some_variants')], 
+    @pytest.mark.parametrize("write_variants_repeated,extra_reads", 
+                             [
+                              ((True, (1,2,3,4,5,6), 'some_variants'), 0), 
+                              ((False, (1,2,3,4,5,6), 'some_variants'), 0),
+                              ((True, (2,2,2,2,2,2), 'some_variants'), 0), 
+                              ((False, (2,2,2,2,2,2), 'some_variants'), 0),
+                              ((True, (1,2,3,4,5,6), 'some_variants'), 2), 
+                              ((False, (1,2,3,4,5,6), 'some_variants'), 2),
+                              ((True, (2,2,2,2,2,2), 'some_variants'), 2), 
+                              ((False, (2,2,2,2,2,2), 'some_variants'), 2),
+                              ], 
                             indirect=['write_variants_repeated'])
-    def test_get_variant_frequency(self, write_variants_repeated):
+    def test_get_variant_frequency_2(self, write_variants_repeated, extra_reads):
         
         # get variants
-        _, n_repeats, expected_vars, temp = write_variants_repeated
-        read_count = max(n_repeats)
+        _, n_repeats, expected_vars, temp_vars, temp_rids = write_variants_repeated
+        read_count = max(n_repeats) + extra_reads
         expected_counts = {var: rep/read_count for rep, var in zip(n_repeats, expected_vars)}
 
+        # write extra reads to file
+        with open(temp_rids.name, 'a') as f:
+            for i in range(extra_reads):
+                f.write(f"extra_{i}\n")
+        temp_rids.seek(0)
+
         # get frequency
-        counts = get_variant_frequency(temp.name)
+        counts = get_variant_frequency(temp_vars.name, temp_rids.name)
 
         # check
         assert counts == expected_counts
-
-        # clean up
-        temp.close()
 
 
 class TestWriteFreqs:
@@ -101,12 +108,12 @@ class TestWriteVariants:
                             indirect=['write_vars'])
     def test_write_variants(self, write_vars):
         
-        shorter, expected_vars, temp = write_vars
+        shorter, expected_vars, temp_vars, _ = write_vars
         var_freqs = {var: 1 for var in expected_vars}
 
         # write file
         with tempfile.NamedTemporaryFile(mode='w+') as temp2:
-            write_variants(var_freqs, temp2.name, temp.name)
+            write_variants(var_freqs, temp2.name, temp_vars.name)
 
             # read file
             temp2.seek(0)
@@ -124,9 +131,6 @@ class TestWriteVariants:
         for line, var in zip(lines[1:], expected_vars):
             assert line == var.print_line(query_name=f'non_parental_{i}', ref_name=ref)
             i += 1
-
-        # clean up
-        temp.close()
       
     def test_no_variants(self):
         
@@ -171,8 +175,9 @@ class TestMain:
             # set sys.argv
             monkeypatch.setattr('sys.argv', 
                                 ['variant_frequency_long.py', 
-                                 '-i', resultfile_aav2389_some,
-                                 '-p', resultfile_aav2389, 
+                                '-i', resultfile_aav2389_some[0],
+                                '-r', resultfile_aav2389_some[1],
+                                 '-p', resultfile_aav2389[0], 
                                  '-o', high.name,
                                  '-oa', all.name,
                                   '-op', par.name,
@@ -194,6 +199,7 @@ class TestMain:
             
             with (
                 tempfile.NamedTemporaryFile(mode='w+') as reads_in,
+                tempfile.NamedTemporaryFile(mode='w+') as read_ids_in,
                 tempfile.NamedTemporaryFile(mode='w+') as par_in,
                 tempfile.NamedTemporaryFile(mode='w+') as high_out,
                 tempfile.NamedTemporaryFile(mode='w+') as all_out,
@@ -208,6 +214,7 @@ class TestMain:
                 monkeypatch.setattr('sys.argv', 
                 ['variant_frequency_long.py', 
                     '-i', reads_in.name,
+                    '-r', read_ids_in.name,
                     '-p', par_in.name, 
                     '-o', high_out.name,
                     '-oa', all_out.name,
@@ -248,11 +255,12 @@ class TestMain:
             ]
         
         with (tempfile.NamedTemporaryFile(mode='w+') as high,
-                    tempfile.NamedTemporaryFile(mode='w+') as all):
+              tempfile.NamedTemporaryFile(mode='w+') as all):
             # set sys.argv
             monkeypatch.setattr('sys.argv', 
                                 ['variant_frequency_long.py', 
-                                '-i', resultfile_aav2389_some,
+                                '-i', resultfile_aav2389_some[0],
+                                '-r', resultfile_aav2389_some[1],
                                 '-o', high.name,
                                 '-oa', all.name,
                                 '-f', '0.5'])

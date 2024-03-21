@@ -5,7 +5,7 @@ from scripts.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,
-    sort_var_names, get_parents,
+    sort_var_names, get_parents, count_lines,
     Substitution, Insertion, Deletion
     )
 
@@ -87,7 +87,7 @@ class TestReadVariantFile:
         n_lines = 0
         longer_cols = set(["reference_name", "pos", "query_name", "var", "ref_bases", "query_bases", "aa_change"])
         shorter_cols = set(["query_name", "pos", "ref_bases", "query_bases", "aa_change"])
-        for line in read_variant_file(resultfile):
+        for line in read_variant_file(resultfile[0]):
             assert line
             assert len(line) in [len(longer_cols), len(shorter_cols)]
             if len(line) == len(longer_cols):
@@ -108,7 +108,7 @@ class TestReadVariantFile:
             "query_bases":"G", 
             "aa_change":"True"
         }
-        lines = [i for i in read_variant_file(resultfile_aav2)]
+        lines = [i for i in read_variant_file(resultfile_aav2[0])]
         assert lines == [expected_lines]
 
     def test_read_variant_file_3(self, resultfile_aav2_shorter):
@@ -120,7 +120,7 @@ class TestReadVariantFile:
             "query_bases":"G", 
             "aa_change":"True"
         }
-        lines = [i for i in read_variant_file(resultfile_aav2_shorter)]
+        lines = [i for i in read_variant_file(resultfile_aav2_shorter[0])]
         assert lines == [expected_lines]
 
     def test_read_variant_file_empty(self):
@@ -153,7 +153,7 @@ class TestGetVariant:
     @pytest.mark.parametrize("write_vars", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_vars'])
     def test_get_variant(self, write_vars):
         
-        _, expected_vars, temp = write_vars
+        _, expected_vars, temp, _ = write_vars
 
         for i, line in enumerate(read_variant_file(temp.name)):
             assert get_variant(line) == expected_vars[i]
@@ -165,7 +165,7 @@ class TestGetVariantsSet:
     @pytest.mark.parametrize("write_vars", [(True, 'some_variants'), (False, 'some_variants')], indirect=['write_vars'])
     def test_get_variants_set(self, write_vars):
 
-        _, expected_vars, temp = write_vars
+        _, expected_vars, temp, _ = write_vars
 
         expected_set = set(expected_vars)
         assert get_variants_set(temp.name) == expected_set
@@ -202,11 +202,11 @@ class TestGetReferenceName:
 
     def test_get_reference_name_longer(self, resultfile_aav2):
 
-        assert get_reference_name(resultfile_aav2) == "AAV2"
+        assert get_reference_name(resultfile_aav2[0]) == "AAV2"
 
     def test_get_reference_name_shorter(self, resultfile_aav2_shorter):
 
-        assert get_reference_name(resultfile_aav2_shorter) is None
+        assert get_reference_name(resultfile_aav2_shorter[0]) is None
 
     def test_get_reference_header_only(self):
 
@@ -263,6 +263,30 @@ class TestGetParents:
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
             parents = get_parents(f.name)
         assert parents == {}
+
+class TestCountLines:
+
+    def test_count_lines_empty(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            assert count_lines(temp.name) == 0
+
+    def test_count_lines_empty_2(self):
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+            temp.write("\n")
+            temp.seek(0)
+            assert count_lines(temp.name) == 0
+
+    def test_count_lines(self):
+
+        lines = ['r1\n', 'r2\n', 'r3\n']
+        
+        with tempfile.NamedTemporaryFile(mode='w+t') as temp:
+
+            temp.writelines(lines)
+            temp.seek(0)
+            assert count_lines(temp.name) == len(lines)
 
 
 class TestSubstituion:

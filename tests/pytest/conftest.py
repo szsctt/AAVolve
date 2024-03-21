@@ -164,49 +164,50 @@ def reffile(request):
 def get_variants(sam, reference, *kwargs):
 
     f = tempfile.NamedTemporaryFile(mode='w+t')
-    extract_features_from_sam(['-i', sam, '-r', reference, '-o', f.name, *kwargs])
-    f.seek(0)
-    return f
+    f2 = tempfile.NamedTemporaryFile(mode='w+t')
+    extract_features_from_sam(['-i', sam, '-r', reference, '-o', f.name, '-O', f2.name, *kwargs])
+    f.seek(0), f2.seek(0)
+    return f, f2
 
 
 @pytest.fixture()
 def resultfile_aav2(aav2_ref_file, samfile_aav2):
 
-    f = get_variants(samfile_aav2, aav2_ref_file)
-    yield f.name
-    f.close()
+    f, f2 = get_variants(samfile_aav2, aav2_ref_file)
+    yield f.name, f2.name
+    f.close(), f2.close()
     
 @pytest.fixture
 def resultfile_aav2_shorter(aav2_ref_file, samfile_aav2):
 
-    f = get_variants(samfile_aav2, aav2_ref_file, '-S')
-    yield f.name
-    f.close()
+    f, f2 = get_variants(samfile_aav2, aav2_ref_file, '-S')
+    yield f.name, f2.name
+    f.close(), f2.close()
 
 @pytest.fixture
 def resultfile_aav23(aav2_ref_file, samfile_aav23):
 
-    f = get_variants(samfile_aav23, aav2_ref_file)
-    yield f.name
-    f.close()
+    f, f2 = get_variants(samfile_aav23, aav2_ref_file)
+    yield f.name, f2.name
+    f.close(), f2.close()
 
 @pytest.fixture
 def resultfile_toy(toy_ref_file, samfile_toy):
 
-    f = get_variants(samfile_toy, toy_ref_file)
-    yield f.name
-    f.close()
+    f, f2 = get_variants(samfile_toy, toy_ref_file)
+    yield f.name, f2.name
+    f.close(), f2.close()
 
 @pytest.fixture
 def resultfile_aav2389(aav2_ref_file, samfile_aav2389):
     
-    f = get_variants(samfile_aav2389, aav2_ref_file)
-    yield f.name
-    f.close()
+    f , f2 = get_variants(samfile_aav2389, aav2_ref_file)
+    yield f.name, f2.name
+    f.close(), f2.close()
 
 @pytest.fixture
 def resultfile_aav2389_some():
-    return "tests/data/variants/test_variants.tsv"
+    return "tests/data/variants/test_variants.tsv", "tests/data/variants/test_variants_read_ids.tsv"
 
 @pytest.fixture
 def resultfile_aav2389_some2():
@@ -269,13 +270,18 @@ def write_vars(request):
     shorter, variants_name = request.param
     variants = request.getfixturevalue(variants_name)
 
-    temp = tempfile.NamedTemporaryFile(mode='w+t')
-    temp.write(variants[0].header(shorter=shorter))
-    for var in variants:
-        reference_name = None if shorter else 'reference'
-        temp.write(var.print_line('query', reference_name))
-    temp.seek(0)
-    return shorter, variants, temp
+    with tempfile.NamedTemporaryFile(mode='w+t') as temp_vars, tempfile.NamedTemporaryFile(mode='w+t') as temp_rids:
+        # write variants
+        temp_vars.write(variants[0].header(shorter=shorter))
+        for var in variants:
+            reference_name = None if shorter else 'reference'
+            temp_vars.write(var.print_line('query', reference_name))
+        temp_vars.seek(0)
+        # write read ids
+        temp_rids.write("query\n")
+        temp_rids.seek(0)
+
+        yield shorter, variants, temp_vars, temp_rids
 
 @pytest.fixture
 def write_variants_repeated(request):
@@ -284,48 +290,58 @@ def write_variants_repeated(request):
     variants = request.getfixturevalue(variants_name)
     assert len(n_repeats) == len(variants) # n_repeats for each variant
 
-    temp = tempfile.NamedTemporaryFile(mode='w+t')
-    temp.write(variants[0].header(shorter=shorter))
-    for i, var in enumerate(variants):
-        reference_name = None if shorter else 'reference'
-        for j in range(n_repeats[i]):
-            temp.write(var.print_line(f'query{j}', reference_name))
+    with tempfile.NamedTemporaryFile(mode='w+t') as temp_vars, tempfile.NamedTemporaryFile(mode='w+t') as temp_rids:
+        
+        # write variants and read ids
+        written_queries = set()
+        temp_vars.write(variants[0].header(shorter=shorter))
+        for i, var in enumerate(variants):
+            reference_name = None if shorter else 'reference'
+            for j in range(n_repeats[i]):
+                temp_vars.write(var.print_line(f'query{j}', reference_name))
+                if f'query{j}' not in written_queries:
+                    temp_rids.write(f"query{j}\n")
+                    written_queries.add(f'query{j}')
+        temp_vars.seek(0)
+        temp_rids.seek(0)
 
-    temp.seek(0)
-    return shorter, n_repeats, variants, temp
+        yield shorter, n_repeats, variants, temp_vars, temp_rids
 
 #### variant_pivoted fixtures ####
 
-def pivot(variants, parents):
+def pivot(variants, read_ids, parents):
 
     f_seq, f_parents = tempfile.NamedTemporaryFile(mode='w+t'), tempfile.NamedTemporaryFile(mode='w+t')
-    pivot_variants_to_wide(['-i', variants, '-p', parents, '-o', f_parents.name, '-O', f_seq.name])
+    pivot_variants_to_wide(['-i', variants, '-r', read_ids, '-p', parents, '-o', f_parents.name, '-O', f_seq.name])
     f_seq.seek(0), f_parents.seek(0)
     return f_seq, f_parents
 
 @pytest.fixture
 def aav3_pivoted_seq(resultfile_aav23):
 
-    f_seq, f_parents = pivot(resultfile_aav23, resultfile_aav23)
+    f_seq, f_parents = pivot(resultfile_aav23[0], resultfile_aav23[1], resultfile_aav23[0])
     yield f_seq.name
     f_seq.close(), f_parents.close()
 
 
 @pytest.fixture
 def aav3_pivoted_parents(resultfile_aav23):
-    f_seq, f_parents = pivot(resultfile_aav23, resultfile_aav23)
+
+
+    f_seq, f_parents = pivot(resultfile_aav23[0], resultfile_aav23[1], resultfile_aav23[0])
     yield f_parents.name
     f_seq.close(), f_parents.close()
     
 @pytest.fixture
 def toy_pivoted_seq(resultfile_toy):
-    f_seq, f_parents = pivot(resultfile_toy, resultfile_toy)
+
+    f_seq, f_parents = pivot(resultfile_toy[0], resultfile_toy[1], resultfile_toy[0])
     yield f_seq.name
     f_seq.close(), f_parents.close()
 
 @pytest.fixture
 def toy_pivoted_parents(resultfile_toy):
-    f_seq, f_parents = pivot(resultfile_toy, resultfile_toy)
+    f_seq, f_parents = pivot(resultfile_toy[0], resultfile_toy[1], resultfile_toy[0])
     yield f_parents.name
     f_seq.close(), f_parents.close()
 

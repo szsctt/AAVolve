@@ -130,7 +130,6 @@ def get_variants_set(filename):
 
   return vars
 
-
 def get_header(filename):
   """
   Get header from file
@@ -194,6 +193,17 @@ def get_parents(parents_file):
         parents[var_id][parent_name] = var
 
     return parents
+
+def count_lines(filename):
+  """
+  Count number of lines in a file
+  """
+  count = 0
+  with use_open(filename, 'rt') as file_handle:
+    for line in file_handle:
+      if line.strip() != '':
+        count += 1
+  return count
  
 # internal representation of a subsitution
 class Substitution:

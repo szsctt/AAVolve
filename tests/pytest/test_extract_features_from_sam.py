@@ -319,7 +319,7 @@ def test_write_header(smaller):
     Test write_header 
     """
     with tempfile.NamedTemporaryFile(mode='w+t') as filehandle:
-        #import pdb; pdb.set_trace()
+
         write_header(filehandle.file, smaller=smaller)
 
         # read header
@@ -362,7 +362,7 @@ def test_write_variant_sub(smaller):
     )
     
     with tempfile.NamedTemporaryFile(mode='w+t') as filehandle:
-        #import pdb; pdb.set_trace()
+
         write_variant(read_id, vars, ref_names, filehandle.file, smaller=smaller)
 
         # read header
@@ -397,7 +397,6 @@ def test_write_variant_sub(smaller):
 @pytest.mark.parametrize("smaller_output", (True, False))
 def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after, aa_isolation, smaller_output):
 
-
     with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
         
         get_all_variants(samfile, reffile, outfile.name, outfile2.name, start_before, end_after, smaller_output, aa_isolation)
@@ -407,9 +406,10 @@ def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after,
         results = outfile.file.readlines()
         results_reads = outfile2.file.readlines()
 
+    vars, reads = resultfile
 
     # read expected results - variants
-    with open(resultfile, 'rt') as handle:
+    with open(vars, 'rt') as handle:
         resultfile_expected = handle.readlines()
         # for smaller output, rearrange and drop columns
         if smaller_output:
@@ -425,11 +425,10 @@ def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after,
         expected_results = expected_results[0:1] 
 
     # read expected results - reads
-    #import pdb; pdb.set_trace()
-    expected_reads = [i.strip().split('\t')[2] + "\n" for i in resultfile_expected]
-    expected_reads = expected_reads[1:]
-    if end_after > 2208:
-        expected_reads = []
+    with open(reads, 'rt') as handle:
+        expected_reads = handle.readlines()
+        if end_after > 2208:
+            expected_reads = []
 
     assert results == expected_results
     assert results_reads == expected_reads

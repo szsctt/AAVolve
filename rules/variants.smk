@@ -1,11 +1,11 @@
-from scripts.snakemake_helpers import get_column_by_sample
+from scripts.snakemake_helpers import get_column_by_sample, get_parents, fill_parents
 
 # first, get variants from the parents
 rule extract_variants_parents:
   input:
     aln = rules.align.output.aligned,
     idx = rules.align.output.idx,
-    ref = get_reference
+    ref = lambda wildcards: get_reference(wildcards, samples)
   output:
     var = "out/variants/parents/{sample}.tsv.gz",
   conda: "../deps/pybio/env.yml"
@@ -20,16 +20,12 @@ rule extract_variants_parents:
      -o {output.var}  
     """ 
 
-def get_parents(wildcards):
-    parents = {k:v for k,v in zip(samples.parent_name, samples.parent_file)}
-    return parents[wildcards.sample]
-
 # number of parents in each parent fasta
 # if there is only one we use 0 and -1 for must-start-before and must-end-after
 # otherwise we use the first and last variant from rule first_last_variants_parents
 rule num_parents:
     input:
-        fa = get_parents
+        fa = lambda wildcards: get_parents(wildcards, samples)
     output:
         num_parents = "out/variants/parents/{sample}_num_parents.txt"
     container: "docker://szsctt/lr_pybio:py310"
@@ -68,23 +64,14 @@ rule first_last_variants_parents:
         fi 
         """ 
 
-
-def get_parents_first_last(wildcards):
-    parent = get_column_by_sample(wildcards, samples, "parent_name")
-    return f"out/variants/parents/{parent}_first_last.txt"
-
-def get_num_parents(wildcards):
-    parent = get_column_by_sample(wildcards, samples, "parent_name")
-    return f"out/variants/parents/{parent}_num_parents.txt"
-
 # get variants from reads
 rule extract_variants_reads:
     input:
         aln = rules.align.output.aligned,
         idx = rules.align.output.idx,
-        ref = get_reference,
-        first_last = get_parents_first_last,
-        n_parents = get_num_parents
+        ref = lambda wildcards: get_reference(wildcards, samples),
+        first_last = lambda wildcards: fill_parents(wildcards, samples, rules.first_last_variants_parents.output.first_last),
+        n_parents = lambda wildcards: fill_parents(wildcards, samples, rules.num_parents.output.num_parents)
     output:
         var = "out/variants/reads/{sample}.tsv.gz",
         read_ids = "out/variants/reads/{sample}_read-ids.txt"
