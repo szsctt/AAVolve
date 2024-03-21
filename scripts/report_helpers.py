@@ -35,7 +35,7 @@ def assign_file_type(file_name, file_type, seq_type):
                 return "Consensus"
             elif os.path.basename(dir) == "c3poa_filt":
                 return "Filtered by repeats"
-        elif seq_type == "sanger":
+        elif seq_type == "sg":
             return "Input"   
     elif file_type == "variant_tsv":
         return "Filtered by reference coverage"
@@ -48,6 +48,7 @@ def assign_file_type(file_name, file_type, seq_type):
             return "Distinct at nucleotide level"
         elif 'aa-seq-counts' in os.path.basename(file_name):
             return "Distinct at amino acid level"
+    raise ValueError(f"File type {file_type} not recognized")
 
 def read_count_graph(df_file, seq_type):
 
@@ -188,10 +189,10 @@ def parent_heatmap(filename, parent_freq_file):
     return fig
 
 
-def plot_breakpoints(breakpoints_file, counts_file):
+def plot_breakpoints(breakpoints_file, counts_file, seq_type):
 
     # get total reads passing all filters
-    counts = import_read_count_data(counts_file, 'np')
+    counts = import_read_count_data(counts_file, seq_type)
     total_nt_reads = counts[counts['File type'] == 'Filtered non-parental variants']['Count'].to_list()[0]
 
     # import breakpoint counts by position

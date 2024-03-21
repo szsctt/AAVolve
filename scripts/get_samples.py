@@ -6,7 +6,7 @@ PARENTDIR = 'out/references/parents'
 os.makedirs(PARENTDIR, exist_ok=True)
 DEFAULT_MINREPS = 3
 REQUIRED_COLUMNS =  ('sample_name', 'parent_name', 'reference_name', 'seq_tech', 'read_file', 'parent_file', 'reference_file')
-SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi']
+SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi', 'sg']
 DEFAULT_FREQ = 0.2
 DEFAULT_INCLUDE_NON = False
 
@@ -155,8 +155,7 @@ def check_data(samples):
     if len(set(samples['sample_name']).intersection(set(samples['reference_name']))) > 0:
         raise Exception("Sample names (column 'sample_name') must be different from reference names (column 'reference_name')")
 
-
-    # check that sequencing technology is either 'np', 'np-cc', 'pb' or 'pb-hifi'
+    # check that sequencing technology is either 'np', 'np-cc', 'pb', 'pb-hifi' or 'sg'
     if not set(samples['seq_tech']).issubset(set(SEQ_TECHS)):
         techs = [f"'{s}'" for s in SEQ_TECHS]
         techs = ', '.join(techs)
