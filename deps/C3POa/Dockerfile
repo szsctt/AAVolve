@@ -47,8 +47,12 @@ RUN pip install pyabpoa==1.4.0
 RUN  pip wheel -w wheels numpy scipy pyabpoa==1.4.0 mappy Cython tqdm editdistance
 
 # clone C3POa
-RUN wget https://github.com/christopher-vollmers/C3POa/archive/refs/tags/v3.1.tar.gz &&\
-    tar -xvf v3.1.tar.gz 
+#RUN wget https://github.com/christopher-vollmers/C3POa/archive/refs/tags/v3.1.tar.gz &&\
+#    tar -xvf v3.1.tar.gz 
+RUN git clone https://github.com/christopher-vollmers/C3POa.git &&\
+    cd C3POa &&\
+    git checkout 7c85c6f
+
 
 # final image
 FROM python:3.7-slim
