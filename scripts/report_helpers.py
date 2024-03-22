@@ -15,11 +15,15 @@ def import_read_count_data(df_file, seq_type):
 
     df['File type'] = df.apply(lambda row: assign_file_type(row['filename'], row['file_type'], seq_type), axis=1)
 
+    assert all(df['File type'].notnull())
+
     input_count = df[df['File type'] == 'Input']['Count'].tolist()
     assert len(input_count) == 1
     input_count = input_count[0]
 
     df['Fraction of reads'] = df['Count'] / input_count
+
+    assert all(df['Fraction of reads'] <= 1.0)
    
     return df
 
@@ -124,7 +128,7 @@ def parent_heatmap(filename, parent_freq_file):
         return None
 
     # reverse order of rows to get most frequent at top
-    df = df.iloc[::-1]
+    #df = df.iloc[::-1]
 
     # get counts
     counts = df['count']
@@ -184,7 +188,6 @@ def parent_heatmap(filename, parent_freq_file):
     fig['layout']['xaxis']['title'] = 'Count'
     fig['layout']['yaxis']['title'] = 'Read'
     fig['layout']['xaxis2']['title'] = 'Position in reference'
-
 
     return fig
 
@@ -286,8 +289,6 @@ def parent_colors(parents_file):
             px.colors.sequential.Turbo, len(parents))
         
     return dict(zip(parents, colors))
-
-
 
 def numeric_position(col):
 
