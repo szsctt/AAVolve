@@ -47,9 +47,8 @@ RUN pip install pyabpoa==1.4.0
 RUN  pip wheel -w wheels numpy scipy pyabpoa==1.4.0 mappy Cython tqdm editdistance
 
 # clone C3POa
-RUN git clone https://github.com/christopher-vollmers/C3POa.git
-
-
+RUN wget https://github.com/christopher-vollmers/C3POa/archive/refs/tags/v3.1.tar.gz &&\
+    tar -xvf v3.1.tar.gz 
 
 # final image
 FROM python:3.7-slim
@@ -59,7 +58,7 @@ RUN apt-get update && apt install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p deps/ C3POa/blat C3POa/racon/build/bin/
-COPY --from=pybuilder C3POa C3POa
+COPY --from=pybuilder C3POa-3.1 C3POa
 RUN chmod +x C3POa/C3POa.py
 COPY --from=racon-builder /racon/build/bin/racon C3POa/racon/build/bin/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
