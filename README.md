@@ -27,9 +27,9 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `sample_name`: A name for the sample
 - `parent_name` (optional): A name for the parents of the sample
 - `reference_name` (optional): A name for the parent to be used as the reference
-- `seq_tech`: The sequencing technology used: either `np` for Nanopore, `np-cc` for Nanopore RCA/R2C2, `pb` or `pb-hifi` for PacBio, or `sg` for sanger sequencing (fasta format)
+- `seq_tech`: The sequencing technology used: either `np` for Nanopore, `np-cc` for Nanopore RCA/R2C2, `pb` or `pb-hifi` for PacBio, or `sg` for sanger sequencing (fasta format). 
 - `min_reps` (optional): For RCA data, the minimum number of repeats for a read to be included (default: 3)
-- `read_file`: The path to the fastq (or fasta) file containing the data for the sample
+- `read_file`: The path to the fastq (or fasta) file containing the data for the sample. For PacBio HiFi data, provide the consensus (ccs) reads.
 - `parent_file`: The path to the fasta file containing the parental sequences used for the shuffling experiment
 - `reference_file` (optional): The path to the fasta file containing one of the parental sequences to be used as a reference for alingment (default: the first parental sequence)
 - `splint_file` (required for RCA data): The path to the fasta file containing the splint used for circularization during RCA
