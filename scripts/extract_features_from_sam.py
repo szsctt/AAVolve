@@ -199,9 +199,8 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
           # get info about variant
           query_bases = get_query_base(read, qpos)
           assert query_bases.upper() != rseq.upper()
-          
-          changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
 
+          changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
           sub = Substitution(rpos = rpos, rseq = rseq, 
                               qseq = query_bases, changes_aa=changes_aa)
         
@@ -278,8 +277,11 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
     # get reference codon - asume first codon starts at posiiton 0 in reference
     rcodon_start = rpos // 3 * 3
     rcodon_end = rcodon_start + 3
+    
+    
     rcodon = str(ref_seqs[read.reference_name][rcodon_start:rcodon_end].seq)
     assert len(rcodon) == 3
+
 
     if aa_isolation:
       # subtitute query base for reference base
@@ -291,8 +293,12 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
       # get query codon
       qcodon_start = (qpos - offset) // 3 * 3 + offset
       qcodon_end = qcodon_start + 3
-      qcodon = read.query_sequence[qcodon_start:qcodon_end]
+      
+      # variant may be in last, incomplete codon, in which case we assume it changes the amino acid
+      if qcodon_end > len(read.query_sequence):
+        return True
 
+      qcodon = read.query_sequence[qcodon_start:qcodon_end]
       assert len(qcodon) == 3
     
     # compare amino acids

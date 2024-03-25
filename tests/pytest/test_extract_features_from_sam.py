@@ -12,6 +12,13 @@ from scripts.extract_features_from_sam import (
 
 from scripts.utils import Substitution, Deletion, Insertion
 
+
+## Fixtures
+
+@pytest.fixture
+def difficult_samfile():
+    return 'tests/data/aln/difficult_reads.bam'
+
 # ## Test parse_args
 def test_parse_args_1():
     """
@@ -454,5 +461,21 @@ def test_get_all_variants_reads_match_reference(samfile, reffile):
     assert vars == ['reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n']
     assert reads == ['AAV2\n']
 
+def test_get_all_variants_difficult(difficult_samfile, aav2n496d_ref_file):
+    """
+    Test with reads that caused issues previously
+    """
+    
+    with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
+        
+        get_all_variants(difficult_samfile, aav2n496d_ref_file, outfile.name, outfile2.name, 40, 2202, False, False)
 
+        # read results
+        outfile.seek(0), outfile2.seek(0)
+
+        vars = outfile.readlines()
+        reads = outfile2.readlines()
+
+    assert  len(vars) == 101
+    assert reads == ['m54079_200305_102420/23462044/ccs\n']
      
