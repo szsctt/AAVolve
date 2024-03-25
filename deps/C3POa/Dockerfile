@@ -26,6 +26,13 @@ mkdir build &&\
 cd build &&\
 cmake -DCMAKE_BUILD_TYPE=Release .. &&\
 make    
+
+# build abpoa
+RUN cd / &&\
+    wget https://github.com/yangao07/abPOA/releases/download/v1.4.1/abPOA-v1.4.1.tar.gz &&\
+    tar -xvf abPOA-v1.4.1.tar.gz &&\
+    cd abPOA-v1.4.1 &&\
+    make
     
 # conk, python and C3POa
 FROM python:3.7 as pybuilder
@@ -36,8 +43,8 @@ RUN apt-get update && apt install \
 
 # build conk wheel
 RUN python3 -m pip install --user --upgrade wheel setuptools Cython
-RUN git clone https://github.com/rvolden/conk
-RUN cd conk &&\
+RUN git clone https://github.com/rvolden/conk &&\
+    cd conk &&\
       python3 setup.py sdist bdist_wheel
 
 # build pyabpoa wheel
@@ -61,10 +68,11 @@ RUN apt-get update && apt install -y \
         pigz wget libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p deps/ C3POa/blat C3POa/racon/build/bin/
+RUN mkdir -p deps/ C3POa/blat C3POa/racon/build/bin/ C3POA/abPOA-v1.4.1/bin
 COPY --from=pybuilder C3POa C3POa
 RUN chmod +x C3POa/C3POa.py
 COPY --from=racon-builder /racon/build/bin/racon C3POa/racon/build/bin/
+COPY --from=racon-builder /abPOA-v1.4.1/bin/abpoa C3POa/abPOA-v1.4.1/bin/
 COPY --from=pybuilder /conk/dist/conk-1.0.0-cp37-cp37m-linux_x86_64.whl deps/
 COPY --from=pybuilder /wheels deps/wheels
 #COPY --from=pybuilder /root/.local /root/.local
