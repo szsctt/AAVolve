@@ -1,7 +1,7 @@
 # AAVolve
 AAVolve: A tool for exploring directed evolution of AAV capsids using long-read sequencing data
 
-AAVolve is a snakemake pipeline for analysing long-read, shuffled AAV capsid data.  It supports nanopore (R2C2) and PacBio data.
+AAVolve is a snakemake pipeline for analysing long-read, shuffled AAV capsid data.  It supports nanopore (including R2C2), PacBio (including HiFi) and Sanger data.
 
 
 ## Quickstart
