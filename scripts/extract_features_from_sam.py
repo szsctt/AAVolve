@@ -200,7 +200,12 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
           query_bases = get_query_base(read, qpos)
           assert query_bases.upper() != rseq.upper()
 
-          changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
+          try:
+            changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
+          except:
+            import pdb; pdb.set_trace()
+            changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
+            
           sub = Substitution(rpos = rpos, rseq = rseq, 
                               qseq = query_bases, changes_aa=changes_aa)
         
@@ -294,6 +299,11 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
       qcodon_start = (qpos - offset) // 3 * 3 + offset
       qcodon_end = qcodon_start + 3
       
+      # if alignment starts part-way though a codon, qcodon_start may be negative
+      # in which case we assume it changes the amino acid
+      if qcodon_start < 0:
+        return True
+
       # variant may be in last, incomplete codon, in which case we assume it changes the amino acid
       if qcodon_end > len(read.query_sequence):
         return True
