@@ -224,8 +224,11 @@ def plot_parent_frequencies(parents_file):
     # convert frequency to percentage
     df['frequency'] = df['frequency'] * 100
 
-    # TODO: deal with different kinds of variants at same location
+    # get location of each variant in the reference
     df['variant'] = numeric_position(df['variant'])
+    # sort by position
+    df['variant_pos'] = df['variant'].str.extract(r'(^\d+)').astype(int)
+    df = df.sort_values('variant_pos')
 
     # map parent names to colors
     parent_colors_dict = parent_colors(parents_file)
@@ -240,10 +243,11 @@ def plot_parent_frequencies(parents_file):
     # remove white lines around bars
     # https://stackoverflow.com/questions/69553283/how-to-remove-white-lines-around-bars-using-plotly-express-bar
     fig.update_traces(marker_line_width = 0,
-                  selector=dict(type="bar"))
+                      selector=dict(type="bar"))
 
     fig.update_layout(bargap=0,
                   bargroupgap = 0,
+                  xaxis={'categoryorder':'array', 'categoryarray':df['variant']},
                  )
 
     return fig

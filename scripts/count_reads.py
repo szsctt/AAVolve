@@ -9,7 +9,6 @@
 # distinct read counts - count number of lines
 
 import argparse
-import os
 from scripts.utils import use_open
 
 FA_EXTS = {'.fa', '.fna', '.fasta'}
