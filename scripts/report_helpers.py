@@ -83,7 +83,7 @@ def print_fraction_nt_reads_pass(df_file, seq_type):
 
     df = import_read_count_data(df_file, seq_type)
 
-    pass_frac = df[df['File type'] == "Distinct at nucleotide level"]['Fraction of reads'].to_list()[0]
+    pass_frac = df[df['File type'] == "Filtered non-parental variants"]['Fraction of reads'].to_list()[0]
 
     print(f'{pass_frac*100:.2f}%')
 
@@ -182,14 +182,16 @@ def parent_heatmap(filename, parent_freq_file):
                     line_color='black', 
                     marker=dict(color='black'), 
                     showlegend=False)
-    fig = make_subplots(rows=1, cols=2, column_widths=[0.2, 0.8], shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.05)
+    fig = make_subplots(rows=1, cols=6, specs = [[{"colspan": 1}, {"colspan": 5}, None, None, None, None]], shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.05)
     fig.add_trace(p2, row=1, col=1)
     fig.add_trace(p1, row=1, col=2)
     fig['layout']['xaxis']['title'] = 'Count'
     fig['layout']['yaxis']['title'] = 'Read'
     fig['layout']['xaxis2']['title'] = 'Position in reference'
 
-    return fig
+    fig2 = go.Figure()
+    fig2.add_trace(p1)
+    return fig2
 
 
 def plot_breakpoints(breakpoints_file, counts_file, seq_type):
