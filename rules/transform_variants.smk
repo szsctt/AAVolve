@@ -1,4 +1,7 @@
 from scripts.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
+from scripts.utils import MAX_SEQS
+
+
 
 # get frequency of each variant
 # also get non-parental variants of high frequency. These can be 
@@ -201,11 +204,11 @@ rule sum_nt_translated_counts:
         """
         # write header
         {params.cat} {input.counts} |\
-            head -n1 |\
+            awk 'NR==1' |\
             gzip > {output.summed}
 
         {params.cat} {input.counts} |\
-            tail -n+2 |\
+            awk 'NR!=1' |\
             sort -k2,2 |\
             python3 -m scripts.sum_counts |\
             sort -k1,1nr |\
@@ -225,7 +228,7 @@ rule dmat:
         seq_type = "nt-seq|aa-seq"
     params:
         distance_metric = lambda wildcards: "identity" if wildcards.seq_type == "nt-seq" else "blosum62",
-        max_seqs = 10000
+        max_seqs = MAX_SEQS
     shell:
         """
         python3 -m scripts.distance_matrix \
