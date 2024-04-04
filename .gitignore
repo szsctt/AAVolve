@@ -5,11 +5,11 @@ data
 config
 .snakemake
 .cache
-scripts/.quarto
-scripts/report_files
-scripts/report.html
 .ipython
 .local
+aavolve/.quarto
+aavolve/report_files
+aavolve/report.html
+aavolve.egg-info
 abpoa.messages
 apboa.messages
-aavolve.egg-info

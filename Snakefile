@@ -1,4 +1,4 @@
-from scripts.get_samples import get_samples
+from aavolve.get_samples import get_samples
 
 samples = get_samples(config)
 
