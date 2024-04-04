@@ -9,8 +9,10 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
     micromamba clean --all --yes
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
-RUN ls && pwd && ls ../..
-RUN pip install -e ../..
+RUN mkdir /app
+COPY setup.py /app
+COPY scripts/* /app/scripts/*
+RUN pip install -e /app
 
 # quarto
 RUN mkdir -p /opt/quarto &&\ 
