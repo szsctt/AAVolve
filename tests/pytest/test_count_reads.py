@@ -2,7 +2,7 @@ import tempfile
 import gzip
 import pytest
 
-from scripts.count_reads import count_fasta, count_fastq, count_variant_read_ids, count_pivoted_tsv, main
+from aavolve.count_reads import count_fasta, count_fastq, count_variant_read_ids, count_pivoted_tsv, main
 
 @pytest.fixture
 def write_fa_no_suffix():

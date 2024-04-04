@@ -3,8 +3,8 @@ import pytest
 from Bio import SeqIO
 from Bio import Seq
 
-from scripts.apply_variants import read_reference, apply_variants, create_temp_seq_file, main
-from scripts.utils import use_open
+from aavolve.apply_variants import read_reference, apply_variants, create_temp_seq_file, main
+from aavolve.utils import use_open
 
 TOY_EXCLUDED = {'read1_matches_ref', 
                 'read3_sub_A6G_insbeforeStart', 

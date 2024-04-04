@@ -4,13 +4,13 @@ import sys
 import pytest
 import pysam
 
-from scripts.extract_features_from_sam import (
+from aavolve.extract_features_from_sam import (
     parse_args, get_reference_names, count_total_reads, check_index_exists,
     get_variants, identify_aa_change, get_query_base, write_header, write_variant,
     get_all_variants
 )
 
-from scripts.utils import Substitution, Deletion, Insertion
+from aavolve.utils import Substitution, Deletion, Insertion
 
 
 ## Fixtures

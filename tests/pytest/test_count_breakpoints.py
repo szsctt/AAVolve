@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.count_breakpoints import count_breakpoints, find_breakpoints, get_var_set, main
+from aavolve.count_breakpoints import count_breakpoints, find_breakpoints, get_var_set, main
 
 @pytest.fixture
 def test_wide():

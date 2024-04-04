@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.first_last_variant import get_first_last_variant, write_output
+from aavolve.first_last_variant import get_first_last_variant, write_output
 
 class TestGetFirstLastVariant:
 

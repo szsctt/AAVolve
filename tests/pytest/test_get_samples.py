@@ -5,9 +5,9 @@ import os
 import pytest
 import pandas as pd
 
-from scripts.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
+from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
                                  DEFAULT_INCLUDE_NON, REQUIRED_COLUMNS, SEQ_TECHS)
-from scripts.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
+from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
 class TestGetName:

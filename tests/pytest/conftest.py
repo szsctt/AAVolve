@@ -5,9 +5,9 @@ import pysam
 import pandas as pd
 from Bio import SeqIO
 
-from scripts.utils import Substitution, Insertion, Deletion
-from scripts.extract_features_from_sam import main as extract_features_from_sam
-from scripts.pivot_variants_to_wide import main as pivot_variants_to_wide
+from aavolve.utils import Substitution, Insertion, Deletion
+from aavolve.extract_features_from_sam import main as extract_features_from_sam
+from aavolve.pivot_variants_to_wide import main as pivot_variants_to_wide
 
 
 #### sample csv fixtures ####

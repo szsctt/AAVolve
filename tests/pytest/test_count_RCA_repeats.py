@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.count_RCA_repeats import count_repeats, write_output
+from aavolve.count_RCA_repeats import count_repeats, write_output
 
 class TestCountRepeats:
 

@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.num_in_fa import count_records, write_output
+from aavolve.num_in_fa import count_records, write_output
 
 
 class TestCountRecords:

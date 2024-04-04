@@ -1,8 +1,8 @@
 import tempfile
 import pytest
 
-from scripts.utils import Substitution, Insertion, Deletion
-from scripts.pivot_variants_to_wide import pivot_reads, get_reads, collect_read_vars, get_read_id, main
+from aavolve.utils import Substitution, Insertion, Deletion
+from aavolve.pivot_variants_to_wide import pivot_reads, get_reads, collect_read_vars, get_read_id, main
 
 def write_header(filehandle):
     filehandle.write('reference_name\tpos\tquery_name\tvar\tref_bases\tquery_bases\taa_change\n')

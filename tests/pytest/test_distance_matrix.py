@@ -5,7 +5,7 @@ import subprocess
 import pytest
 import numpy as np
 
-from scripts.distance_matrix import alignment, dmat, read_input, main
+from aavolve.distance_matrix import alignment, dmat, read_input, main
 
 class TestReadInput:
 

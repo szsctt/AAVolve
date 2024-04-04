@@ -4,8 +4,8 @@ from sys import argv
 
 import pytest
 
-from scripts.filter_consensus_by_repeats import seq_generator, filter, main
-from scripts.utils import use_open
+from aavolve.filter_consensus_by_repeats import seq_generator, filter, main
+from aavolve.utils import use_open
 
 class TestFilter:
 

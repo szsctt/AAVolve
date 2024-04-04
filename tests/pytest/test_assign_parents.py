@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.assign_parents import get_parents, main
+from aavolve.assign_parents import get_parents, main
 
 @pytest.fixture
 def test_wide():

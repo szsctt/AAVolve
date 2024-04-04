@@ -1,6 +1,6 @@
 import tempfile
 
-from scripts.remove_first_column import main
+from aavolve.remove_first_column import main
 
 class TestMain:
 
