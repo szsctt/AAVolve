@@ -10,7 +10,7 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 RUN ls && pwd
-RUN pip install -e .
+RUN pip install -e ../..
 
 # quarto
 RUN mkdir -p /opt/quarto &&\ 
