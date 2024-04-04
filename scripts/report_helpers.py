@@ -189,10 +189,7 @@ def parent_heatmap(filename, parent_freq_file):
     fig['layout']['yaxis']['title'] = 'Read'
     fig['layout']['xaxis2']['title'] = 'Position in reference'
 
-    fig2 = go.Figure()
-    fig2.add_trace(p1)
-    return fig2
-
+    return fig
 
 def plot_breakpoints(breakpoints_file, counts_file, seq_type):
 
