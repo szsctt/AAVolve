@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-from scripts.report_helpers import (
+from aavolve.report_helpers import (
     import_read_count_data, assign_file_type, read_count_graph, read_fraction_graph, print_fraction_nt_reads_pass,
     print_unique_nt_reads, print_unique_aa_reads, read_assigned_parents, parent_heatmap, plot_breakpoints,
     plot_parent_frequencies, make_distance_heatmap, parent_colors, numeric_position

@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.variant_frequency_long import get_variant_frequency, write_freqs, write_variants, main
+from aavolve.variant_frequency_long import get_variant_frequency, write_freqs, write_variants, main
 
 
 class TestGetVariantFrequency:

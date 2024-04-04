@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import pytest
 import numpy as np
 import pandas as pd
-from scripts.snakemake_helpers import (
+from aavolve.snakemake_helpers import (
     get_column_by_sample, is_fastq, get_reads_for_counting, get_dmat_input, format_input_reads, get_parents, fill_parents, get_reference
     )
 

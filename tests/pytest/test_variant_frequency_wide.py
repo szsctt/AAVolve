@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.variant_frequency_wide import count_freqs, main
+from aavolve.variant_frequency_wide import count_freqs, main
 
 @pytest.fixture
 def test_wide():

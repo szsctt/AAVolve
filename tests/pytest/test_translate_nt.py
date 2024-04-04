@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 
-from scripts.translate_nt import main
+from aavolve.translate_nt import main
 
 
 @pytest.fixture

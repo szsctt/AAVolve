@@ -1,7 +1,7 @@
 import tempfile
 import gzip
 import pytest
-from scripts.utils import (
+from aavolve.utils import (
     use_open, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,

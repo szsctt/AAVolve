@@ -1,7 +1,7 @@
 from io import StringIO
 import pytest
 
-from scripts.sum_counts import main
+from aavolve.sum_counts import main
 
 class TestMain:
 
