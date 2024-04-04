@@ -1,4 +1,4 @@
-from scripts.snakemake_helpers import get_column_by_sample, get_parents, fill_parents
+from aavolve.snakemake_helpers import get_column_by_sample, get_parents, fill_parents
 
 # first, get variants from the parents
 rule extract_variants_parents:
@@ -14,7 +14,7 @@ rule extract_variants_parents:
     sample = "|".join(samples.parent_name)
   shell:
     """
-    python3 -m scripts.extract_features_from_sam \
+    python3 -m aavolve.extract_features_from_sam \
      -i {input.aln} \
      -r {input.ref} \
      -o {output.var}  
@@ -33,7 +33,7 @@ rule num_parents:
         sample = "|".join(samples.parent_name)
     shell:
         """
-        python3 -m scripts.num_in_fa \
+        python3 -m aavolve.num_in_fa \
         -i {input.fa} \
         -o {output.num_parents} 
         """    
@@ -58,7 +58,7 @@ rule first_last_variants_parents:
         if [ $NPAR -eq 1 ]; then
             touch {output.first_last}
         else
-            python3 -m scripts.first_last_variant \
+            python3 -m aavolve.first_last_variant \
             -i {input.var} \
             -o {output.first_last}
         fi 
@@ -91,7 +91,7 @@ rule extract_variants_reads:
         fi
         echo "For $NPAR parents, using first $FIRST and last $LAST as start and end."
 
-        python3 -m scripts.extract_features_from_sam \
+        python3 -m aavolve.extract_features_from_sam \
             -i {input.aln} \
             -r {input.ref} \
             -o {output.var} \

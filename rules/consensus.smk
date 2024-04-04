@@ -1,4 +1,4 @@
-from scripts.snakemake_helpers import get_column_by_sample
+from aavolve.snakemake_helpers import get_column_by_sample
 
 rule consensus:
    input:

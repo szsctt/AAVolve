@@ -1,5 +1,5 @@
 import numpy as np
-from scripts.snakemake_helpers import get_reads, get_reference
+from aavolve.snakemake_helpers import get_reads, get_reference
 
 # map to one of the parental references.  The choice of reference is arbitrary
 rule align:

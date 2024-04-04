@@ -1,8 +1,6 @@
 from aavolve.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
 from aavolve.utils import MAX_SEQS
 
-
-
 # get frequency of each variant
 # also get non-parental variants of high frequency. These can be 
 # concatenated with parent tsv to retain these variants in subsequent steps
