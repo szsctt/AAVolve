@@ -76,7 +76,6 @@ jobs:
         name: Build and push pybio
         uses: docker/build-push-action@v5
         with:
-          context: .
           file: deps/pybio/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64
