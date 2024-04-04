@@ -39,7 +39,7 @@ rule filter_consensus:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.filter_consensus_by_repeats -i {input.fasta} -o {output.filt} --min-repeats {params.n_filt}
+        python3 -m aavolve.filter_consensus_by_repeats -i {input.fasta} -o {output.filt} --min-repeats {params.n_filt}
         """
 
 rule count_repeats:
@@ -50,5 +50,5 @@ rule count_repeats:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.count_RCA_repeats -i {input.fasta} -o {output.counts}
+        python3 -m aavolve.count_RCA_repeats -i {input.fasta} -o {output.counts}
         """

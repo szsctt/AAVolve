@@ -1,5 +1,5 @@
-from scripts.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
-from scripts.utils import MAX_SEQS
+from aavolve.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
+from aavolve.utils import MAX_SEQS
 
 
 
@@ -29,7 +29,7 @@ rule variant_frequency:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.variant_frequency_long {params}
+        python3 -m aavolve.variant_frequency_long {params}
         """
 
 # combine parental and high-frequency non-parental variants
@@ -71,7 +71,7 @@ rule pivot:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.pivot_variants_to_wide \
+        python3 -m aavolve.pivot_variants_to_wide \
          -i {input.library} \
          -r {input.library_read_ids} \
          -p {input.parents} \
@@ -91,7 +91,7 @@ rule assign_parents:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.assign_parents \
+        python3 -m aavolve.assign_parents \
          -i {input.parents} \
          -o {output.assigned}
         """
@@ -107,7 +107,7 @@ rule parent_freq:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.variant_frequency_wide \
+        python3 -m aavolve.variant_frequency_wide \
             -i {input.in_file} \
             -o {output.freqs} \
             --split-counts
@@ -124,7 +124,7 @@ rule ident_breakpoints:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.count_breakpoints \
+        python3 -m aavolve.count_breakpoints \
             --input {input.in_file} \
             --output {output.breakpoints} \
             --summary1 {output.break_per_read} \
@@ -151,7 +151,7 @@ rule distinct_reads:
         {params.outzip} > {output.counts}
 
         # rest of file
-        python3 -m scripts.remove_first_column -i {input.reads} |\
+        python3 -m aavolve.remove_first_column -i {input.reads} |\
         sort |\
         uniq -c |\
         awk -v OFS=$'\\t' '{{$1=$1}};1' |\
@@ -170,7 +170,7 @@ rule apply_variants:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.apply_variants \
+        python3 -m aavolve.apply_variants \
             -v {input.variants_names_wide} \
             -p {input.parent_variants_long} \
             -r {input.ref} \
@@ -186,7 +186,7 @@ rule translate_nt:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        python3 -m scripts.translate_nt \
+        python3 -m aavolve.translate_nt \
             -i {input.counts} \
             -o {output.counts}
         """
@@ -210,7 +210,7 @@ rule sum_nt_translated_counts:
         {params.cat} {input.counts} |\
             awk 'NR!=1' |\
             sort -k2,2 |\
-            python3 -m scripts.sum_counts |\
+            python3 -m aavolve.sum_counts |\
             sort -k1,1nr |\
             gzip >> {output.summed}
         """
@@ -231,7 +231,7 @@ rule dmat:
         max_seqs = MAX_SEQS
     shell:
         """
-        python3 -m scripts.distance_matrix \
+        python3 -m aavolve.distance_matrix \
             --input {input.counts} \
             --output {output.dmat} \
             --plot {output.plot} \
@@ -258,7 +258,7 @@ rule count_reads:
         distinct = lambda wildcards, input: f"--distinct-read-counts-files {input.distinct} {input.distinct_aa}",
     shell:
         """
-        python3 -m scripts.count_reads \
+        python3 -m aavolve.count_reads \
          --output {output.counts} \
          {params}
         """
@@ -283,7 +283,7 @@ rule report:
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
-        papermill scripts/report.ipynb {output.tmp_notebook} \
+        papermill aavolve.report.ipynb {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
