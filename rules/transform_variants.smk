@@ -281,7 +281,7 @@ rule report:
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
-        papermill aavolve.report.ipynb {output.tmp_notebook} \
+        papermill aavolve/report.ipynb {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
