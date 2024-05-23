@@ -6,7 +6,8 @@ import pytest
 import pandas as pd
 
 from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
-                                 DEFAULT_INCLUDE_NON, REQUIRED_COLUMNS, SEQ_TECHS)
+                                 DEFAULT_INCLUDE_NON, DEFAULT_GROUP_VARS,
+                                 REQUIRED_COLUMNS, SEQ_TECHS)
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
@@ -509,6 +510,59 @@ class TestCheckData:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
 
+    def test_check_data_group_vars_added(self, sample_df):
+        """
+        Check that group_vars is set to default if not present
+        """
+
+        check_data(sample_df)
+
+        assert 'group_vars' in sample_df.columns
+        assert all(sample_df['group_vars'] == DEFAULT_INCLUDE_NON)
+
+    @pytest.mark.parametrize("group_vars", [True, False])
+    def test_check_data_group_vars_correct(self, sample_df, group_vars):
+        """
+        Check that an exception is not raised if group_vars not True or False
+        """
+
+        # change group_vars
+        sample_df['group_vars'] = group_vars
+
+        check_data(sample_df)
+
+        assert 'group_vars' in sample_df.columns
+        assert all([i == group_vars for i in sample_df['group_vars']])
+
+    @pytest.mark.parametrize("group_vars", ["blah", 0.2, 1])
+    def test_check_data_group_vars_incorrect(self, sample_df, group_vars):
+        """
+        Check that an exception is raised if group_vars not True or False
+        """
+
+        expected_error = f"Column 'group_vars' must be True, False or omitted: found value {group_vars} in row 0"
+
+        # change group_vars
+        sample_df['group_vars'] = group_vars
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+
+    def test_check_data_group_vars_and_include_non_parental(self, sample_df):
+
+        expected_error = "Error in row 0: Can't set both 'group_vars' and 'include_non_parental' to True"
+
+        # can't have both group_vars and include_non_parental set to True
+        sample_df['group_vars'] = True
+        sample_df['include_non_parental'] = True
+
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+        
+
 class TestGetSamples:
 
     def test_get_samples_from_command_line(self, config):
@@ -523,6 +577,7 @@ class TestGetSamples:
         expected_samples['min_reps'] = None 
         expected_samples['non_parental_freq'] = DEFAULT_FREQ
         expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
+        expected_samples['group_vars'] = DEFAULT_GROUP_VARS
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -548,6 +603,7 @@ class TestGetSamples:
             expected_samples['min_reps'] = DEFAULT_MINREPS if seq_tech == 'np-cc' else None
             expected_samples['non_parental_freq'] = DEFAULT_FREQ
             expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
+            expected_samples['group_vars'] = DEFAULT_GROUP_VARS
 
 
             # pass in both file and config

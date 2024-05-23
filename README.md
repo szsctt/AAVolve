@@ -35,5 +35,6 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `splint_file` (required for RCA data): The path to the fasta file containing the splint used for circularization during RCA
 - `non_parental_freq` (optional): Identify non-parental variants seen in more than this fraction of the reads (default: 0.2)
 - `include_non_parental`(optional): Include non-parental variants if they are seen in more than `non_parental_freq` reads (default: False)
+- `group_vars` (optional): During assignment of parents, group variants and assign parent with lowest hamming distance to read.  If False, variants are considered individually (default: True)
 
 

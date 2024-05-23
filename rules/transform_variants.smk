@@ -55,7 +55,6 @@ rule combine_variants:
         """
 
 # pivot long to wide to get table with one read per row
-# retain all parental mutations, and discard any non-parental
 rule pivot:
     input:
         library = rules.variant_frequency.input.library,
@@ -66,6 +65,8 @@ rule pivot:
         pivoted_seq = "out/variants/pivot/{sample}_seq.tsv.gz"
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
+    params:
+        group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_variants") else ''
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -75,7 +76,8 @@ rule pivot:
          -p {input.parents} \
          --remove-na \
          --output-parents {output.pivoted_parents} \
-         --output-seq {output.pivoted_seq}
+         --output-seq {output.pivoted_seq} \
+         {params}
         """
 
 # assign parents using all columns  

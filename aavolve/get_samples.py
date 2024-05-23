@@ -9,6 +9,7 @@ REQUIRED_COLUMNS =  ('sample_name', 'parent_name', 'reference_name', 'seq_tech',
 SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi', 'sg']
 DEFAULT_FREQ = 0.2
 DEFAULT_INCLUDE_NON = False
+DEFAULT_GROUP_VARS = False
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -234,6 +235,28 @@ def check_data(samples):
         # if null, fill with default
         if row['include_non_parental'] is None or pd.isnull(row['include_non_parental']):
             samples.loc[i, 'include_non_parental'] = DEFAULT_INCLUDE_NON
+
+    # check if group_vars is specified - otherwise fill with default
+    if 'group_vars' not in samples.columns:
+        samples['group_vars'] = [DEFAULT_GROUP_VARS]*len(samples)
+
+    # check that all group_vars values are True or False
+    for i, row in samples.iterrows():
+
+        # check that values are boolean or null
+        if not (row['group_vars'] is True or row['group_vars'] is False or
+                row['group_vars'] is None or pd.isnull(row['group_vars'])):
+                raise ValueError(f"Column 'group_vars' must be True, False or omitted: found value {row['group_vars']} in row {i}")
+        
+        # if null, fill with default
+        if row['group_vars'] is None or pd.isnull(row['group_vars']):
+            samples.loc[i, 'group_vars'] = DEFAULT_GROUP_VARS
+
+    # can't do both group_vars and include_non_parental for the same sample
+    for i, row in samples.iterrows():
+
+        if row['group_vars'] is True and row['include_non_parental'] is True:
+            raise ValueError(f"Error in row {i}: Can't set both 'group_vars' and 'include_non_parental' to True")
 
     return samples
 
