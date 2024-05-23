@@ -19,7 +19,7 @@ def main(sys_argv):
     parents = get_parents(args.parents)
 
     # pivot the reads
-    pivot_reads(args.input, args.read_ids, args.output_parents, args.output_seq, parents, args.remove_na, args.group_vars, args.group_dist, args.max_distance)
+    pivot_reads(args.input, args.read_ids, args.output_parents, args.output_seq, parents, args.remove_na, args.group_vars, args.group_dist, args.max_distance_frac)
 
 def get_args(sys_argv):
     parser = argparse.ArgumentParser()
@@ -31,11 +31,11 @@ def get_args(sys_argv):
     parser.add_argument("--output-seq", "-O", help="output file with sequence for each variant", required=True)
     parser.add_argument("--group-vars", '-g', action="store_true", help="Group adjacent variants and use the parent with the lowest hamming distance")
     parser.add_argument("--group-dist", help="Variants separated by at most this number of nucleotides will be grouped for assigning parents, and lowest hamming distance parent will be used", default=1, type=int)
-    parser.add_argument("--max-distance", help="When grouping variants, if distance is more than this for all parents, group will be assined 'NA'", type=int, default=3)
+    parser.add_argument("--max-distance-frac", help="When grouping variants, if distance divided by variant number in group is more than this for all parents, group will be assined 'NA'", type=float, default=0.2)
     args = parser.parse_args(sys_argv)
     return args
 
-def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remove_na, group, group_dist, max_dist):
+def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remove_na, group, group_dist, max_dist_frac):
     """
     Write one line per read to outfile
     Columns in outfile are read_id, variant1, variant2, variant3, ...
@@ -51,15 +51,14 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
     header = ["read_id"] + list(parent_var_ids)
 
     # group parent var ids
-    parent_var_ids = make_var_groups(parents, group, group_dist)
+    parent_var_ids = make_var_groups(parent_var_ids, group, group_dist)
 
     # get names of parents, including reference
     wt_name = get_reference_name(infile)
-    parent_names = [wt_name]
+    parent_names = set([wt_name])
     for d in parents.values():
         for k in d.keys():
-            if k not in parent_names:
-                parent_names.append(k)
+            parent_names.add(k)
 
     # rearrange parents to get dict with variants from each parent as values
     all_parent_group_vars = {}
@@ -69,7 +68,7 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
         # for each group, get variants
         for parent_name in parent_names:
             all_parent_group_vars[group][parent_name] = {parents[var][parent_name].var_id():parents[var][parent_name] for var in group if parent_name in parents[var]}
-
+    
     # open result files for writing
     with use_open(outfile_parents, "wt") as par, use_open(outfile_seq, "wt") as seq:
         # write header for parents file
@@ -94,10 +93,10 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
 
                 # find closest parent from parent_group_vars -> returns dict with parent as key and variants as value
                 # there may be more than one parent with the same distance
-                group_pars = closest_parent(group_vars, all_parent_group_vars[group], max_dist)
+                group_pars = closest_parent(group_vars, all_parent_group_vars[group], max_dist_frac)
 
                 # if we have multiple closest parents with different variants, pick one randomly
-                group_par_names = ','.join(group_pars.keys())
+                group_par_names = ','.join(sorted(list(group_pars.keys())))
                 group_par = set(group_pars.keys()).pop()
                 
                 # if parent is NA, no closest parent could be identified, so just add NA to rows
@@ -120,7 +119,7 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
                     if var not in parent_group_vars.keys():
                         # get reference sequence for this variant from another parent
                         bases = ''
-                        for parent in all_parent_group_vars[group]:
+                        for parent in parent_names:
                             if var in all_parent_group_vars[group][parent]:
                                 bases = all_parent_group_vars[group][parent][var].refbases()
                                 break
@@ -140,7 +139,7 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
             writer_par.writerow(row_par)
             writer_seq.writerow(row_seq)
 
-def closest_parent(group_vars, parents, max_dist):
+def closest_parent(group_vars, parents, max_dist_frac):
 
     dists = {}
     # get distance for each parent
@@ -164,7 +163,8 @@ def closest_parent(group_vars, parents, max_dist):
         dists[par] = dist
 
     # check if any distances are below maximum
-    if any(i < max_dist for i in dists.values()):
+    max_dist = int(len(group_vars) * max_dist_frac)
+    if any(i <= max_dist for i in dists.values()):
         par = min(dists, key=dists.get)
         par = [i for i in dists.keys() if dists[i] == dists[par]] # get any tied parents
     else:
@@ -203,14 +203,14 @@ def make_var_groups(parents, group, group_dist):
 
     # if we don't want to group, each variant is in it's own group
     if not group:
-        return [[i] for i in parents]
+        return [(i,) for i in parents]
     
     if group_dist < 0:
         raise ValueError("Can't have a grouping distance of less than 0.  Set --group-dist to a positive integer.")
 
     last_pos = 0
     group, groups = [], []
-    for var in parents.keys():
+    for var in parents:
         
         # get position
         pos, type = var.split(":")

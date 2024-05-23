@@ -30,8 +30,8 @@ class TestPivotReads:
         expected_parents = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
             'read_1\tNA\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
-            'read_2\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
-            'read_3\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
+            'read_2\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
+            'read_3\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
         ]
         expected_seq = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
@@ -45,12 +45,11 @@ class TestPivotReads:
               tempfile.NamedTemporaryFile('w+t') as outfile_seq):
 
 
-            pivot_reads(resultfile_aav2389_some[0], resultfile_aav2389_some[1], outfile_parents.name, outfile_seq.name, parents, False)
+            pivot_reads(resultfile_aav2389_some[0], resultfile_aav2389_some[1], outfile_parents.name, outfile_seq.name, parents, False, False, 0, 0)
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
             result_seq = outfile_seq.readlines()
-        
         
         assert result_parents == expected_parents
         assert result_seq == expected_seq
@@ -62,8 +61,8 @@ class TestPivotReads:
 
         expected_parents = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
-            'read_2\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
-            'read_3\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
+            'read_2\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
+            'read_3\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
         ]
         expected_seq = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
@@ -76,7 +75,7 @@ class TestPivotReads:
               tempfile.NamedTemporaryFile('w+t') as outfile_seq,
             ):
 
-            pivot_reads(infile, in_read_ids, outfile_parents.name, outfile_seq.name, parents, True)
+            pivot_reads(infile, in_read_ids, outfile_parents.name, outfile_seq.name, parents, True, False, 0, 0)
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -108,7 +107,7 @@ class TestPivotReads:
               tempfile.NamedTemporaryFile('w+t') as outfile_seq,
               ):
 
-            pivot_reads(infile, in_read_ids, outfile_parents.name, outfile_seq.name, parents, False)
+            pivot_reads(infile, in_read_ids, outfile_parents.name, outfile_seq.name, parents, False, False, 0, 0)
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -139,7 +138,7 @@ class TestPivotReads:
 
             write_read_ids(infile_reads.name, infile_read_ids)
 
-            pivot_reads(infile_reads.name, infile_read_ids.name, outfile_parents.name, outfile_seq.name, parents, False)
+            pivot_reads(infile_reads.name, infile_read_ids.name, outfile_parents.name, outfile_seq.name, parents, False, False, 0, 0)
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -168,7 +167,7 @@ class TestPivotReads:
             # write header to infile_reads
             write_header(infile_reads)
 
-            pivot_reads(infile_reads.name, infile_read_ids.name, outfile_parents.name, outfile_seq.name, parents, False)
+            pivot_reads(infile_reads.name, infile_read_ids.name, outfile_parents.name, outfile_seq.name, parents, False, False, 0, 0)
 
             outfile_parents.seek(0), outfile_seq.seek(0)
             result_parents = outfile_parents.readlines()
@@ -353,8 +352,8 @@ class TestMain:
         expected_parents = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
             'read_1\tNA\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
-            'read_2\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
-            'read_3\tAAV3b,AAV9,AAV8\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
+            'read_2\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n',
+            'read_3\tAAV3b,AAV8,AAV9\tAAV3b,AAV9\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV8\tAAV2,AAV3b,AAV9\tAAV3b,AAV8\n'
         ]
         expected_seq = [
             'read_id\t40:sub\t44:sub\t45:sub\t46:sub\t50:sub\t53:sub\n', 
@@ -394,7 +393,6 @@ class TestMain:
             ]
 
         with (tempfile.NamedTemporaryFile('w+t') as infile_parents,
-              tempfile.NamedTemporaryFile('w+t') as infile_read_ids,
               tempfile.NamedTemporaryFile('w+t') as outfile_parents, 
               tempfile.NamedTemporaryFile('w+t') as outfile_seq):
             
