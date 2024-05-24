@@ -9,7 +9,9 @@ REQUIRED_COLUMNS =  ('sample_name', 'parent_name', 'reference_name', 'seq_tech',
 SEQ_TECHS = ['np', 'np-cc', 'pb', 'pb-hifi', 'sg']
 DEFAULT_FREQ = 0.2
 DEFAULT_INCLUDE_NON = False
-DEFAULT_GROUP_VARS = False
+DEFAULT_GROUP_VARS = True
+DEFAULT_GROUP_VARS_DIST = 4
+DEFAULT_MAX_GROUP_DISTANCE = 0.2
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -258,12 +260,29 @@ def check_data(samples):
         if row['group_vars'] is True and row['include_non_parental'] is True:
             raise ValueError(f"Error in row {i}: Can't set both 'group_vars' and 'include_non_parental' to True")
 
-    # check group_vars_dist
-    raise NotImplementedError("Not yet implemented")
+    # check group_vars_dist - must be positive integer
+    if 'group_vars_dist' not in samples.columns:
+        samples['group_vars_dist'] = [DEFAULT_GROUP_VARS_DIST]*len(samples)
+    for i, row in samples.iterrows():
+        try:
+            int(row['group_vars_dist'])
+        except ValueError:
+            raise ValueError(f"Column 'group_vars_dist' must be a positive integer: found value {row['group_vars_dist']} in row {i}")
+        if row['group_vars_dist'] < 0:
+            raise ValueError(f"Column 'group_vars_dist' must be a positive integer: found value {row['group_vars_dist']} in row {i}")
+        elif row['group_vars_dist'] != int(row['group_vars_dist']):
+            raise ValueError(f"Column 'group_vars_dist' must be a positive integer: found value {row['group_vars_dist']} in row {i}")
 
-    # check max_group_distnace
-    raise NotImplementedError("Not yet implemented")
-
+    # check max_group_distnace - must be float between 0 and 1
+    if 'max_group_distance' not in samples.columns:
+        samples['max_group_distance'] = [DEFAULT_MAX_GROUP_DISTANCE]*len(samples)
+    for i, row in samples.iterrows():
+        try:
+            float(row['max_group_distance'])
+        except ValueError:
+            raise ValueError(f"Column 'max_group_distance' must be a float between 0 and 1: found value {row['max_group_distance']} in row {i}")
+        if row['max_group_distance'] < 0 or row['max_group_distance'] > 1:
+            raise ValueError(f"Column 'max_group_distance' must be a float between 0 and 1: found value {row['max_group_distance']} in row {i}")
 
     return samples
 
