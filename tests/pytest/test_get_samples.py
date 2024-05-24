@@ -7,7 +7,8 @@ import pandas as pd
 
 from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
                                  DEFAULT_INCLUDE_NON, DEFAULT_GROUP_VARS,
-                                 REQUIRED_COLUMNS, SEQ_TECHS)
+                                 REQUIRED_COLUMNS, SEQ_TECHS, DEFAULT_GROUP_VARS_DIST,
+                                 DEFAULT_MAX_GROUP_DISTANCE)
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
@@ -486,6 +487,9 @@ class TestCheckData:
         Check that an exception is not raised if include_non_parental not True or False
         """
 
+        # change group_vars to False
+        sample_df['group_vars'] = False
+
         # change include_non_parental
         sample_df['include_non_parental'] = include_non_parental
 
@@ -518,7 +522,7 @@ class TestCheckData:
         check_data(sample_df)
 
         assert 'group_vars' in sample_df.columns
-        assert all(sample_df['group_vars'] == DEFAULT_INCLUDE_NON)
+        assert all(sample_df['group_vars'] == DEFAULT_GROUP_VARS)
 
     @pytest.mark.parametrize("group_vars", [True, False])
     def test_check_data_group_vars_correct(self, sample_df, group_vars):
@@ -561,7 +565,86 @@ class TestCheckData:
         with pytest.raises(Exception) as error:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
-        
+
+    def test_check_data_group_vars_dist_added(self, sample_df):
+        """
+        Check that group_vars is set to default if not present
+        """
+
+        check_data(sample_df)
+
+        assert 'group_vars' in sample_df.columns
+        assert all(sample_df['group_vars_dist'] == DEFAULT_GROUP_VARS_DIST)
+
+    @pytest.mark.parametrize("group_vars_dist", [0, 1, 5])
+    def test_check_data_group_vars_dist_correct(self, sample_df, group_vars_dist):
+        """
+        Check that an exception is not raised if group_vars is an integer greater than 0
+        """
+
+        # change group_vars
+        sample_df['group_vars_dist'] = group_vars_dist
+
+        check_data(sample_df)
+
+        assert 'group_vars_dist' in sample_df.columns
+        assert all([i == group_vars_dist for i in sample_df['group_vars_dist']])        
+
+    @pytest.mark.parametrize("group_vars_dist", ["blah", -1, 1.2])
+    def test_check_data_group_vars_dist_incorrect(self, sample_df, group_vars_dist):
+        """
+        Check that an exception is raised if group_vars not a positive integer
+        """
+
+        expected_error = f"Column 'group_vars_dist' must be a positive integer: found value {group_vars_dist} in row 0"
+
+        # change group_vars
+        sample_df['group_vars_dist'] = group_vars_dist
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+
+    def test_check_data_max_group_dist_added(self, sample_df):
+        """
+        Check that group_vars is set to default if not present
+        """
+
+        check_data(sample_df)
+
+        assert 'group_vars' in sample_df.columns
+        assert all(sample_df['max_group_distance'] == DEFAULT_MAX_GROUP_DISTANCE)
+
+    @pytest.mark.parametrize("max_group_distance", [0, 0.5, 1])
+    def test_check_data_max_group_dist_correct(self, sample_df, max_group_distance):
+        """
+        Check that an exception is not raised if group_vars is an integer greater than 0
+        """
+
+        # change group_vars
+        sample_df['max_group_distance'] = max_group_distance
+
+        check_data(sample_df)
+
+        assert 'max_group_distance' in sample_df.columns
+        assert all([i == max_group_distance for i in sample_df['max_group_distance']])        
+
+    @pytest.mark.parametrize("max_group_distance", ["blah", -1, 1.2])
+    def test_check_data_max_group_distance_incorrect(self, sample_df, max_group_distance):
+        """
+        Check that an exception is raised if  max_group_distance not a positive integer
+        """
+
+        expected_error = f"Column 'max_group_distance' must be a float between 0 and 1: found value { max_group_distance} in row 0"
+
+        # change group_vars
+        sample_df['max_group_distance'] =  max_group_distance
+
+        # should raise
+        with pytest.raises(Exception) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
 
 class TestGetSamples:
 
@@ -578,6 +661,8 @@ class TestGetSamples:
         expected_samples['non_parental_freq'] = DEFAULT_FREQ
         expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
         expected_samples['group_vars'] = DEFAULT_GROUP_VARS
+        expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
+        expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -604,6 +689,8 @@ class TestGetSamples:
             expected_samples['non_parental_freq'] = DEFAULT_FREQ
             expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
             expected_samples['group_vars'] = DEFAULT_GROUP_VARS
+            expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
+            expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
 
 
             # pass in both file and config
