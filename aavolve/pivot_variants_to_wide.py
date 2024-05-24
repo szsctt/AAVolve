@@ -31,7 +31,7 @@ def get_args(sys_argv):
     parser.add_argument("--output-seq", "-O", help="output file with sequence for each variant", required=True)
     parser.add_argument("--group-vars", '-g', action="store_true", help="Group adjacent variants and use the parent with the lowest hamming distance")
     parser.add_argument("--group-dist", help="Variants separated by at most this number of nucleotides will be grouped for assigning parents, and lowest hamming distance parent will be used", default=1, type=int)
-    parser.add_argument("--max-distance-frac", help="When grouping variants, if distance divided by variant number in group is more than this for all parents, group will be assined 'NA'", type=float, default=0.2)
+    parser.add_argument("--max-distance-frac", help="When grouping variants, if distance divided by variant number in group is less than this for a parent, the parent will be assigned to the group", type=float, default=0.2)
     args = parser.parse_args(sys_argv)
     return args
 
@@ -68,7 +68,8 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
         # for each group, get variants
         for parent_name in parent_names:
             all_parent_group_vars[group][parent_name] = {parents[var][parent_name].var_id():parents[var][parent_name] for var in group if parent_name in parents[var]}
-    
+    assert len(all_parent_group_vars) == len(parent_var_ids)
+
     # open result files for writing
     with use_open(outfile_parents, "wt") as par, use_open(outfile_seq, "wt") as seq:
         # write header for parents file
@@ -93,7 +94,7 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
 
                 # find closest parent from parent_group_vars -> returns dict with parent as key and variants as value
                 # there may be more than one parent with the same distance
-                group_pars = closest_parent(group_vars, all_parent_group_vars[group], max_dist_frac)
+                group_pars = closest_parent(group, group_vars, all_parent_group_vars[group], max_dist_frac)
 
                 # if we have multiple closest parents with different variants, pick one randomly
                 group_par_names = ','.join(sorted(list(group_pars.keys())))
@@ -139,22 +140,21 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
             writer_par.writerow(row_par)
             writer_seq.writerow(row_seq)
 
-def closest_parent(group_vars, parents, max_dist_frac):
+def closest_parent(group, read_vars, parents, max_dist_frac):
 
     dists = {}
     # get distance for each parent
     for par in parents.keys():
         # get all the variants in the read and the parent
-        read_variants = set(i.var_id() for i in group_vars)
+        read_variants = set(i.var_id() for i in read_vars)
         parent_variants = set(i for i in parents[par].keys())
-        all_variants = read_variants.union(parent_variants)
         dist = 0
         # for each variant, distance is incremented if the variant is different between the read and parent
-        for var in all_variants:
+        for var in group:
             # both read and parent have this variant
             if var in read_variants and var in parent_variants:
                 # but they're different
-                if parents[par][var] not in group_vars:
+                if parents[par][var] not in read_vars:
                     dist += 1 
             else:
                 # variant is in read but not parent or vice versa
@@ -163,7 +163,7 @@ def closest_parent(group_vars, parents, max_dist_frac):
         dists[par] = dist
 
     # check if any distances are below maximum
-    max_dist = int(len(group_vars) * max_dist_frac)
+    max_dist = int(len(group)* max_dist_frac)
     if any(i <= max_dist for i in dists.values()):
         par = min(dists, key=dists.get)
         par = [i for i in dists.keys() if dists[i] == dists[par]] # get any tied parents
@@ -171,7 +171,6 @@ def closest_parent(group_vars, parents, max_dist_frac):
         return {'NA': 'NA'} # if all distances are above max, return NAs
 
     return {i: parents[i] for i in par}
-
 
 def collect_read_vars(file_name):
 
@@ -246,7 +245,6 @@ def make_var_groups(parents, group, group_dist):
 
     return groups
 
-
 def get_read_id(file_name):
 
     with open(file_name, "rt") as handle:
@@ -254,7 +252,6 @@ def get_read_id(file_name):
             rid = line.strip()
             if rid != '':
                 yield rid
-
 
 def get_reads(file_name, in_read_ids):
     """
