@@ -258,6 +258,13 @@ def check_data(samples):
         if row['group_vars'] is True and row['include_non_parental'] is True:
             raise ValueError(f"Error in row {i}: Can't set both 'group_vars' and 'include_non_parental' to True")
 
+    # check group_vars_dist
+    raise NotImplementedError("Not yet implemented")
+
+    # check max_group_distnace
+    raise NotImplementedError("Not yet implemented")
+
+
     return samples
 
 def get_samples(config):
