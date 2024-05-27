@@ -38,5 +38,3 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `group_vars` (optional): During assignment of parents, group variants and assign parent with lowest hamming distance to read.  If False, variants are considered individually (default: True)
 - `group_vars_dist` (optional): When grouping variants, combine non-adjacent variants that are at most this far apart (defult: 4)
 - `max_group_distance` (optional): When grouping variants, assign a parent if there are at most this fraction of the variants that differ between a parent and the read. For example, in a group of 6 variants, if this parameter is set to 0.2, a parent that has one variant that differs from the read will still be assigned to the group.  Note that if `group_vars` is `False`, variants must match a parent otherwise they will be set to `NA`, regardless of the value for this parameter (default: 0.2).
-
-
