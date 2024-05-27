@@ -19,7 +19,7 @@ def main(sys_argv):
     parents = get_parents(args.parents)
 
     # pivot the reads
-    pivot_reads(args.input, args.read_ids, args.output_parents, args.output_seq, parents, args.remove_na)
+    pivot_reads(args.input, args.read_ids, args.output_parents, args.output_seq, parents, args.remove_na, args.group_vars, args.group_dist, args.max_distance_frac)
 
 def get_args(sys_argv):
     parser = argparse.ArgumentParser()
@@ -29,10 +29,13 @@ def get_args(sys_argv):
     parser.add_argument("--remove-na", action="store_true", help = "Remove variants that don't match any parents")
     parser.add_argument("--output-parents", "-o", help="output file with possible parents for each variant", required=True)
     parser.add_argument("--output-seq", "-O", help="output file with sequence for each variant", required=True)
+    parser.add_argument("--group-vars", '-g', action="store_true", help="Group adjacent variants and use the parent with the lowest hamming distance")
+    parser.add_argument("--group-dist", help="Variants separated by at most this number of nucleotides will be grouped for assigning parents, and lowest hamming distance parent will be used", default=1, type=int)
+    parser.add_argument("--max-distance-frac", help="When grouping variants, if distance divided by variant number in group is less than this for a parent, the parent will be assigned to the group", type=float, default=0.2)
     args = parser.parse_args(sys_argv)
     return args
 
-def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remove_na):
+def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remove_na, group, group_dist, max_dist_frac):
     """
     Write one line per read to outfile
     Columns in outfile are read_id, variant1, variant2, variant3, ...
@@ -44,17 +47,30 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
     # sort variant ids by position
     parent_var_ids = sort_var_names(parent_var_ids)
 
-    # get names of parents, including reference
-    wt_name = get_reference_name(infile)
-    parent_names = [wt_name]
-    for d in parents.values():
-        for k in d.keys():
-            if k not in parent_names:
-                parent_names.append(k)
-
-    # write a header to outfile
+    # create a header for writing later
     header = ["read_id"] + list(parent_var_ids)
 
+    # group parent var ids
+    parent_var_ids = make_var_groups(parent_var_ids, group, group_dist)
+
+    # get names of parents, including reference
+    wt_name = get_reference_name(infile)
+    parent_names = set([wt_name])
+    for d in parents.values():
+        for k in d.keys():
+            parent_names.add(k)
+
+    # rearrange parents to get dict with variants from each parent as values
+    all_parent_group_vars = {}
+    # iterate over groups
+    for group in parent_var_ids:
+        all_parent_group_vars[group] = {}
+        # for each group, get variants
+        for parent_name in parent_names:
+            all_parent_group_vars[group][parent_name] = {parents[var][parent_name].var_id():parents[var][parent_name] for var in group if parent_name in parents[var]}
+    assert len(all_parent_group_vars) == len(parent_var_ids)
+
+    # open result files for writing
     with use_open(outfile_parents, "wt") as par, use_open(outfile_seq, "wt") as seq:
         # write header for parents file
         writer_par = csv.writer(par, delimiter="\t")
@@ -71,47 +87,90 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
             row_seq, row_par = [read_id], [read_id]
             
             # iterate over possible parental variants
-            for parent_var_id in parent_var_ids:
-                # check if this read has this variant
-                if parent_var_id in read.keys():
+            for group in parent_var_ids:
+                
+                # collect variants for this group
+                group_vars = [read[var] for var in group if var in read.keys()]
 
-                    # get variant from read
-                    read_var = read[parent_var_id]
+                # find closest parent from parent_group_vars -> returns dict with parent as key and variants as value
+                # there may be more than one parent with the same distance
+                group_pars = closest_parent(group, group_vars, all_parent_group_vars[group], max_dist_frac)
 
-                    # get parents that have this variant
-                    vars_parents = [k for k,v in parents[parent_var_id].items() if str(read_var) == str(v)]
+                # if we have multiple closest parents with different variants, pick one randomly
+                group_par_names = ','.join(sorted(list(group_pars.keys())))
+                group_par = set(group_pars.keys()).pop()
+                
+                # if parent is NA, no closest parent could be identified, so just add NA to rows
+                if group_par == 'NA':
+                    for var in group:
+                        row_seq.append('NA')
+                        row_par.append('NA')
+                    continue
+                
+                # get variants for parent
+                parent_group_vars = group_pars[group_par]
 
-                    # if there are any parents that have this variant
-                    if len(vars_parents) > 0:
-                        # add sequence to row
-                        row_seq.append(read_var.qbases())
-                        # add parent name to row
-                        row_par.append(",".join(vars_parents))
-        
-                    # otherwise, add NA to row
+                # assign variants and parent for each variant in group
+                for var in group:
+
+                    # add parent name(s)
+                    row_par.append(group_par_names)
+                    
+                    # if variant not in parent, add wild-type sequence
+                    if var not in parent_group_vars.keys():
+                        # get reference sequence for this variant from another parent
+                        bases = ''
+                        for parent in parent_names:
+                            if var in all_parent_group_vars[group][parent]:
+                                bases = all_parent_group_vars[group][parent][var].refbases()
+                                break
+                        assert bases != ''
+                        row_seq.append(bases)
+                    # add variant sequence
                     else:
-                        row_seq.append("NA") # could potentially be the alternate allele?
-                        row_par.append("NA")
-
-                # otherwise, sequence is wild-type
-                else:
-
-                    # get any variant from parents to get the reference allele
-                    parent_var = list(parents[parent_var_id].values())[0]
-                    # sequnece is reference
-                    row_seq.append(parent_var.refbases())
-                    # parents are all those that have the wild-type allele
-                    alt_parents = set((*parents[parent_var_id].keys(), 'non_parental'))
-                    vars_parents = [i for i in parent_names if i not in alt_parents]
-                    row_par.append(",".join(vars_parents))
+                         row_seq.append(parent_group_vars[var].qbases())
 
             # check if any variants didn't match any parents
             if remove_na and "NA" in row_par:
                 continue
 
             # write row to outfile
+            assert len(header) == len(row_par)
+            assert len(row_par) == len(row_seq)
             writer_par.writerow(row_par)
             writer_seq.writerow(row_seq)
+
+def closest_parent(group, read_vars, parents, max_dist_frac):
+
+    dists = {}
+    # get distance for each parent
+    for par in parents.keys():
+        # get all the variants in the read and the parent
+        read_variants = set(i.var_id() for i in read_vars)
+        parent_variants = set(i for i in parents[par].keys())
+        dist = 0
+        # for each variant, distance is incremented if the variant is different between the read and parent
+        for var in group:
+            # both read and parent have this variant
+            if var in read_variants and var in parent_variants:
+                # but they're different
+                if parents[par][var] not in read_vars:
+                    dist += 1 
+            else:
+                # variant is in read but not parent or vice versa
+                if var in read_variants or var in parent_variants:
+                    dist += 1
+        dists[par] = dist
+
+    # check if any distances are below maximum
+    max_dist = int(len(group)* max_dist_frac)
+    if any(i <= max_dist for i in dists.values()):
+        par = min(dists, key=dists.get)
+        par = [i for i in dists.keys() if dists[i] == dists[par]] # get any tied parents
+    else:
+        return {'NA': 'NA'} # if all distances are above max, return NAs
+
+    return {i: parents[i] for i in par}
 
 def collect_read_vars(file_name):
 
@@ -136,6 +195,55 @@ def collect_read_vars(file_name):
     if len(vars) > 0:
         yield rid, vars
 
+def make_var_groups(parents, group, group_dist):
+    """
+    Group variants that are adjacent or separated by at most group_dist nucleotides
+    """
+
+    # if we don't want to group, each variant is in it's own group
+    if not group:
+        return [(i,) for i in parents]
+    
+    if group_dist < 0:
+        raise ValueError("Can't have a grouping distance of less than 0.  Set --group-dist to a positive integer.")
+
+    last_pos = 0
+    group, groups = [], []
+    for var in parents:
+        
+        # get position
+        pos, type = var.split(":")
+        pos_split = pos.split("_")
+
+        # get the start position of this variant
+        if type == 'sub' or type == "ins":
+            start = int(pos_split[0])
+            end = int(pos_split[0])
+        elif type == "del":
+            start = int(pos_split[0])
+            end = int(pos_split[1])
+        else:
+            raise ValueError("Variant type not recognized")
+        
+        # check if this variant is within group_dist of the last variant
+        if start - last_pos <= group_dist:
+            group.append(var)
+        else:
+            # start new group
+            if len(group) > 0:
+                groups.append(group)
+            group = [var]
+
+        last_pos = end
+    
+    # add the last group
+    if len(group) > 0:
+        groups.append(group)
+
+    # easier to work with tuples than lists
+    groups = [tuple(i) for i in groups]
+
+    return groups
 
 def get_read_id(file_name):
 
@@ -144,7 +252,6 @@ def get_read_id(file_name):
             rid = line.strip()
             if rid != '':
                 yield rid
-
 
 def get_reads(file_name, in_read_ids):
     """

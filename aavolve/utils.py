@@ -70,7 +70,6 @@ def get_variant(row):
   Return a variant (Insertion, Deletion, Substitution) from a row from a file
   """
   var_type = get_variant_type(row['ref_bases'], row['query_bases'])
-  
 
   # get info for substitution
   if var_type == 'sub':
@@ -79,7 +78,6 @@ def get_variant(row):
     rseq = row['ref_bases']
     qseq = row['query_bases']
     changes_aa = row['aa_change'] == 'True'
-
 
     assert len(rseq) == 1
     assert len(qseq) == 1
@@ -98,7 +96,6 @@ def get_variant(row):
      
   # get info for deletion
   elif var_type == 'del':
-     
     
     pos = row['pos'].split('_')
     start_rpos = int(pos[0])
@@ -141,10 +138,11 @@ def get_header(filename):
     raise ValueError(f"File '{filename}' is empty")
   return header
 
-def get_reference_name(filename):
+def get_reference_name(filename, shorter_behaviour="error"):
   """
   Get reference name from file
   """
+  assert shorter_behaviour in ["error", "return_none"]
 
   # check if file is empty (no header or variants)
   with use_open(filename, 'rt') as file_handle:
@@ -162,7 +160,10 @@ def get_reference_name(filename):
     pass
   # reference isn't output for shorter format 
   except KeyError:
-    pass
+    if shorter_behaviour == "error":
+      raise ValueError(f"Can't get reference name from file '{filename}'")
+    else:
+      pass
   
   return None
 

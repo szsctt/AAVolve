@@ -146,8 +146,8 @@ def write_variants(freqs, filename, input_file):
 
     header = get_header(input_file)
     if len(freqs) > 0:
-        ref = get_reference_name(input_file)
-
+        ref = get_reference_name(input_file, shorter_behaviour="return_none")
+    
     # open file and write header
     with use_open(filename, 'wt', newline='') as handle:
         handle.write(header)

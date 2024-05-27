@@ -204,9 +204,16 @@ class TestGetReferenceName:
 
         assert get_reference_name(resultfile_aav2[0]) == "AAV2"
 
-    def test_get_reference_name_shorter(self, resultfile_aav2_shorter):
+    @pytest.mark.parametrize('shorter_behaviour', ["error", "return_none"])
+    def test_get_reference_name_shorter(self, resultfile_aav2_shorter, shorter_behaviour):
 
-        assert get_reference_name(resultfile_aav2_shorter[0]) is None
+        if shorter_behaviour == "return_none":
+            assert get_reference_name(resultfile_aav2_shorter[0], shorter_behaviour=shorter_behaviour) is None
+            return
+
+        with pytest.raises(ValueError) as e_info:
+            get_reference_name(resultfile_aav2_shorter[0], shorter_behaviour=shorter_behaviour)
+        assert str(e_info.value) == f"Can't get reference name from file '{resultfile_aav2_shorter[0]}'"
 
     def test_get_reference_header_only(self):
 
