@@ -68,7 +68,7 @@ rule pivot:
     params:
         group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_vars") else '',
         group_dist = lambda wildcards: f'--group-dist {get_column_by_sample(wildcards, samples, "group_vars_dist")}' if get_column_by_sample(wildcards, samples, "group_vars_dist") else '',
-        max_group_distance = lambda wildcards: '--max-group-distance 0' if not get_column_by_sample(wildcards, samples, "group_vars") else f'--max-group-distance {get_column_by_sample(wildcards, samples, "max_group_distance")}',
+        max_group_distance = lambda wildcards: '--max-distance-frac 0' if not get_column_by_sample(wildcards, samples, "group_vars") else f'--max-distance-frac {get_column_by_sample(wildcards, samples, "max_group_distance")}',
 
     container: "docker://szsctt/lr_pybio:py310"
     shell:
