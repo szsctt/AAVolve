@@ -205,6 +205,57 @@ def count_lines(filename):
       if line.strip() != '':
         count += 1
   return count
+
+def make_var_groups(parents, group, group_dist):
+    """
+    Group variants that are adjacent or separated by at most group_dist nucleotides
+    """
+
+    # if we don't want to group, each variant is in it's own group
+    if not group:
+        return [(i,) for i in parents]
+    
+    if group_dist < 0:
+        raise ValueError("Can't have a grouping distance of less than 0.  Set --group-dist to a positive integer.")
+
+    last_pos = 0
+    group, groups = [], []
+    for var in parents:
+        
+        # get position
+        pos, type = var.split(":")
+        pos_split = pos.split("_")
+
+        # get the start position of this variant
+        if type == 'sub' or type == "ins":
+            start = int(pos_split[0])
+            end = int(pos_split[0])
+        elif type == "del":
+            start = int(pos_split[0])
+            end = int(pos_split[1])
+        else:
+            raise ValueError("Variant type not recognized")
+        
+        # check if this variant is within group_dist of the last variant
+        if start - last_pos <= group_dist:
+            group.append(var)
+        else:
+            # start new group
+            if len(group) > 0:
+                groups.append(group)
+            group = [var]
+
+        last_pos = end
+    
+    # add the last group
+    if len(group) > 0:
+        groups.append(group)
+
+    # easier to work with tuples than lists
+    groups = [tuple(i) for i in groups]
+
+    return groups
+
  
 # internal representation of a subsitution
 class Substitution:
