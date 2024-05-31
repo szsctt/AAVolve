@@ -69,7 +69,6 @@ rule pivot:
         group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_vars") else '',
         group_dist = lambda wildcards: f'--group-dist {get_column_by_sample(wildcards, samples, "group_vars_dist")}' if get_column_by_sample(wildcards, samples, "group_vars_dist") else '',
         max_group_distance = lambda wildcards: '--max-distance-frac 0' if not get_column_by_sample(wildcards, samples, "group_vars") else f'--max-distance-frac {get_column_by_sample(wildcards, samples, "max_group_distance")}',
-
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -171,13 +170,17 @@ rule apply_variants:
     output:
         seqs = "out/corrected/counts/{sample}_nt-seq-counts.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
+    params:
+        group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_vars") else '',
+        group_dist = lambda wildcards: f'--group-dist {get_column_by_sample(wildcards, samples, "group_vars_dist")}' if get_column_by_sample(wildcards, samples, "group_vars_dist") else '',
     shell:
         """
         python3 -m aavolve.apply_variants \
             -v {input.variants_names_wide} \
             -p {input.parent_variants_long} \
             -r {input.ref} \
-            -o {output.seqs} 
+            -o {output.seqs}  \
+            {params}
         """
 
 # translate corrected reads to amino acids
@@ -185,7 +188,7 @@ rule translate_nt:
     input:
         counts = rules.apply_variants.output.seqs
     output:
-        counts = "out/corrected/counts/{sample}_aa-seq-translated.tsv.gz"
+        counts = temp("out/corrected/counts/{sample}_aa-seq-translated.tsv.gz")
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
