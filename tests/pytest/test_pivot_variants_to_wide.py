@@ -490,12 +490,6 @@ class TestCollectReadVars:
         
         assert vars == expected_vars
  
-class TestMakeVarGroups:
-    
-    def test_make_var_groups(self):
-
-        pass
-
 class TestGetReads:
 
     def test_get_reads(self, resultfile_aav2389_some):

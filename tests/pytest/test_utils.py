@@ -296,6 +296,12 @@ class TestCountLines:
             assert count_lines(temp.name) == len(lines)
 
 
+class TestMakeVarGroups:
+    
+    def test_make_var_groups(self):
+
+        raise NotImplementedError
+
 class TestSubstituion:
 
     @pytest.fixture
