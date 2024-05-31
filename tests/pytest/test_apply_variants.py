@@ -147,7 +147,7 @@ class TestCreateTempSeqFile:
             expected = f.readlines()
 
         # run fucntion and read result
-        res = create_temp_seq_file(aav3_pivoted_parents, resultfile_aav23[0])
+        res = create_temp_seq_file(aav3_pivoted_parents, resultfile_aav23[0], False, 0)
         result = res.readlines()
 
         # check
@@ -166,7 +166,7 @@ class TestCreateTempSeqFile:
             expected = f.readlines()
 
         # run function and read result
-        res = create_temp_seq_file(toy_pivoted_parents, resultfile_toy[0])
+        res = create_temp_seq_file(toy_pivoted_parents, resultfile_toy[0], False, 0)
         result = res.readlines()
 
         # check
@@ -175,6 +175,9 @@ class TestCreateTempSeqFile:
         # clean up
         res.close()
 
+    def test_create_seq_file_grouping(self):
+
+        raise NotImplementedError
         
 class TestMain:
 
