@@ -193,7 +193,7 @@ def create_temp_seq_file(variants, parents, do_grouping, grouping_dist):
         file_vars = set(reader.fieldnames)
         file_vars.discard('count')
         file_vars.discard('read_id')
-        assert set(vars.keys()) == set(file_vars)
+        assert set(vars.keys()) == file_vars
 
         # iterate over rows
         for rnum, row in enumerate(reader):
