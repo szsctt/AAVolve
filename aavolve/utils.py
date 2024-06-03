@@ -169,7 +169,17 @@ def get_reference_name(filename, shorter_behaviour="error"):
 
 def sort_var_names(variants):
 
-    return sorted(variants, key=lambda x: int(x.split(':')[0].split('_')[0]))
+    # sorting is based on start, stop, and then alphabetical on variant type
+    def sorting_function(variant):
+      pos, vartype = variant.split(":")
+      if '_' in pos:
+        pos1, pos2 = pos.split("_")
+      else:
+        pos1 = pos
+        pos2 = pos1
+      return int(pos1), int(pos2), vartype
+
+    return sorted(variants, key=lambda x: sorting_function(x))
 
 def get_parents(parents_file):
     """
@@ -200,11 +210,66 @@ def count_lines(filename):
   Count number of lines in a file
   """
   count = 0
+
   with use_open(filename, 'rt') as file_handle:
     for line in file_handle:
       if line.strip() != '':
         count += 1
   return count
+
+def make_var_groups(parents, group, group_dist):
+    """
+    Group variants that are adjacent or separated by at most group_dist nucleotides
+    """
+
+    # check input is sorted
+    assert parents == sort_var_names(parents)
+
+    # if we don't want to group, each variant is in it's own group
+    if not group:
+        return [(i,) for i in parents]
+    
+    if group_dist < 0:
+        raise ValueError("Can't have a grouping distance of less than 0.  Set --group-dist to a positive integer.")
+
+    last_pos = 0
+    group, groups = [], []
+    for var in parents:
+        
+        # get position
+        pos, type = var.split(":")
+        pos_split = pos.split("_")
+
+        # get the start position of this variant
+        if type == 'sub' or type == "ins":
+            start = int(pos_split[0])
+            end = int(pos_split[0])
+        elif type == "del":
+            start = int(pos_split[0])
+            end = int(pos_split[1])
+        else:
+            raise ValueError("Variant type not recognized")
+        
+        # check if this variant is within group_dist of the last variant
+        if start - last_pos <= group_dist:
+            group.append(var)
+        else:
+            # start new group
+            if len(group) > 0:
+                groups.append(group)
+            group = [var]
+
+        last_pos = end
+    
+    # add the last group
+    if len(group) > 0:
+        groups.append(group)
+
+    # easier to work with tuples than lists
+    groups = [tuple(i) for i in groups]
+
+    return groups
+
  
 # internal representation of a subsitution
 class Substitution:

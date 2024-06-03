@@ -9,7 +9,7 @@ import argparse
 import csv
 from sys import argv
 
-from aavolve.utils import get_variant, use_open, sort_var_names, get_reference_name, get_parents
+from aavolve.utils import get_variant, use_open, sort_var_names, get_reference_name, get_parents, make_var_groups
 
 def main(sys_argv):
 
@@ -96,7 +96,7 @@ def pivot_reads(infile, in_read_ids, outfile_parents, outfile_seq, parents, remo
                 # there may be more than one parent with the same distance
                 group_pars = closest_parent(group, group_vars, all_parent_group_vars[group], max_dist_frac)
 
-                # if we have multiple closest parents with different variants, pick one randomly
+                # if we have multiple closest parents with different variants, pick one randomly for the sequence file
                 group_par_names = ','.join(sorted(list(group_pars.keys())))
                 group_par = set(group_pars.keys()).pop()
                 
@@ -194,56 +194,6 @@ def collect_read_vars(file_name):
     # yield the last read
     if len(vars) > 0:
         yield rid, vars
-
-def make_var_groups(parents, group, group_dist):
-    """
-    Group variants that are adjacent or separated by at most group_dist nucleotides
-    """
-
-    # if we don't want to group, each variant is in it's own group
-    if not group:
-        return [(i,) for i in parents]
-    
-    if group_dist < 0:
-        raise ValueError("Can't have a grouping distance of less than 0.  Set --group-dist to a positive integer.")
-
-    last_pos = 0
-    group, groups = [], []
-    for var in parents:
-        
-        # get position
-        pos, type = var.split(":")
-        pos_split = pos.split("_")
-
-        # get the start position of this variant
-        if type == 'sub' or type == "ins":
-            start = int(pos_split[0])
-            end = int(pos_split[0])
-        elif type == "del":
-            start = int(pos_split[0])
-            end = int(pos_split[1])
-        else:
-            raise ValueError("Variant type not recognized")
-        
-        # check if this variant is within group_dist of the last variant
-        if start - last_pos <= group_dist:
-            group.append(var)
-        else:
-            # start new group
-            if len(group) > 0:
-                groups.append(group)
-            group = [var]
-
-        last_pos = end
-    
-    # add the last group
-    if len(group) > 0:
-        groups.append(group)
-
-    # easier to work with tuples than lists
-    groups = [tuple(i) for i in groups]
-
-    return groups
 
 def get_read_id(file_name):
 

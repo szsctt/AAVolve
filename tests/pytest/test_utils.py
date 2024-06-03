@@ -6,6 +6,7 @@ from aavolve.utils import (
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,
     sort_var_names, get_parents, count_lines,
+    make_var_groups,
     Substitution, Insertion, Deletion
     )
 
@@ -257,6 +258,14 @@ class TestSortVarNames:
         result = sort_var_names(input_list)
 
         assert result == expected_list
+    
+    def test_sort_var_names_tied(self):
+
+        # sorting is based on start, stop, and then alphabetical on variant type
+        inset = {'10:sub', '10:ins', '10_12:del', '10_15:del'}
+        outlist = ['10:ins', '10:sub', '10_12:del', '10_15:del']
+        assert sort_var_names(inset) == outlist
+
 
 class TestGetParents:
 
@@ -295,6 +304,28 @@ class TestCountLines:
             temp.seek(0)
             assert count_lines(temp.name) == len(lines)
 
+
+class TestMakeVarGroups:
+    
+    @pytest.mark.parametrize('do_grouping,grouping_dist,expected_result', 
+                             (
+                                (False, 0, [('50:sub',), ('51:sub',), ('52:sub',), ('55:sub',), ('70:sub',), ('71:sub',)]),
+                                (True, 0, [('50:sub',), ('51:sub',), ('52:sub',), ('55:sub',), ('70:sub',), ('71:sub',)]),
+                                (True, 1, [('50:sub', '51:sub', '52:sub'), ('55:sub',), ('70:sub', '71:sub')]),
+                                (True, 3, [('50:sub', '51:sub', '52:sub', '55:sub'), ('70:sub', '71:sub')])
+                             )
+                             )
+    def test_make_var_groups(self, do_grouping, grouping_dist, expected_result):
+
+        vars = ['50:sub', '51:sub', '52:sub', '55:sub', '70:sub', '71:sub']
+        result = make_var_groups(vars, do_grouping, grouping_dist)
+        assert result == expected_result
+    
+    def test_make_var_groups_unsorted(self):
+
+        vars = ['70:sub', '51:sub', '52:sub', '55:sub', '50:sub', '71:sub']
+        with pytest.raises(AssertionError):
+            make_var_groups(vars, True, 1)
 
 class TestSubstituion:
 
