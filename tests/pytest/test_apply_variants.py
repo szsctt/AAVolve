@@ -124,6 +124,7 @@ class TestApplyVariants:
         for row in read_variants(toy_pivoted_seq):
 
             read_id = row['read_id']
+            
             expected_seq = expected[read_id]
 
             # insertions before start of reference are not reproduced
@@ -177,7 +178,41 @@ class TestCreateTempSeqFile:
 
     def test_create_seq_file_grouping(self):
 
-        raise NotImplementedError
+        parents = [
+            '\t'.join(('refrence_name', 'pos', 'query_name', 'var', 'ref_bases', 'query_bases', 'aa_change')) + '\n',
+            '\t'.join(('AAV2', '1', 'AAV3', 'C2G', 'C', 'G', 'False')) + '\n',
+            '\t'.join(('AAV2', '2', 'AAV3', 'C3G', 'C', 'G', 'False')) + '\n',
+            '\t'.join(('AAV2', '3', 'AAV3', 'C4G', 'C', 'G', 'False')) + '\n',
+            '\t'.join(('AAV2', '1', 'AAV5', 'C2T', 'C', 'T', 'False')) + '\n',
+            '\t'.join(('AAV2', '2', 'AAV5', 'C3T', 'C', 'T', 'False')) + '\n',
+            '\t'.join(('AAV2', '3', 'AAV5', 'C4T', 'C', 'T', 'False')) + '\n',
+        ]
+        variants = [
+            '\t'.join(('read_id', '1:sub', '2:sub', '3:sub')) + '\n',
+            '\t'.join(('read_1', 'AAV3', 'AAV3', 'AAV3')) + '\n',
+            '\t'.join(('read_2', 'AAV3,AAV5', 'AAV3,AAV5', 'AAV3,AAV5')) + '\n',
+            '\t'.join(('read_2', 'AAV5', 'AAV5', 'AAV5')) + '\n',
+        ]
+        # pick one parent at random for read 2
+        expected_result1 = [
+            '\t'.join(('read_id', '1:sub', '2:sub', '3:sub')) + '\n',
+            '\t'.join(('read_1', 'G', 'G', 'G')) + '\n',
+            '\t'.join(('read_2', 'G', 'G', 'G')) + '\n',
+            '\t'.join(('read_2', 'T', 'T', 'T')) + '\n',
+        ]
+        expected_result2 = list(expected_result1)
+        expected_result2[2] = '\t'.join(('read_2', 'T', 'T', 'T')) + '\n'
+        
+        with (tempfile.NamedTemporaryFile(mode='w+t')) as p, (tempfile.NamedTemporaryFile(mode='w+t')) as v:
+            p.writelines(parents)
+            v.writelines(variants)
+            p.seek(0), v.seek(0)
+
+            res = create_temp_seq_file(v.name, p.name, True, 1)
+            result = res.readlines()
+            res.close()
+
+        assert (result == expected_result1) or (result == expected_result2)
         
 class TestMain:
 
