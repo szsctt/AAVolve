@@ -289,7 +289,7 @@ rule report:
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
-        papermill aavolve/report.ipynb {output.tmp_notebook} \
+        papermill /app/aavolve/report.ipynb {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
@@ -304,10 +304,3 @@ rule report:
         quarto render {params.report_basename}
         """
 
-'''
-
-        #export XDG_RUNTIME_DIR={params.tmpdir_1}
-        #export XDG_CACHE_HOME={params.tmpdir_2}
-        #export XDG_DATA_HOME={params.tmpdir_3}
-        #mkdir -p {params.tmpdir_1} {params.tmpdir_2} {params.tmpdir_3}
-        #quarto render {output.tmp_notebook} --output - > {output.report}'''
