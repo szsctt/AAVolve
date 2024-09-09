@@ -8,13 +8,13 @@ AAVolve is a snakemake pipeline for analysing long-read, shuffled AAV capsid dat
 To run with a local installation of `snakemake` and `apptainer`, clone this repository and use:
 
 ```
-snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg>
+snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> sample_name=<name_for_sample>
 ```
 
 For Nanopore R2C2 data (np-cc), please also specify a path to a fasta file containing the splint:
 
 ```
-snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta>
+snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta> sample_name=<name_for_sample>
 ```
 
 Look for outputs in the `out` folder.
@@ -37,12 +37,14 @@ AAVolve makes use of `snakemake's` `--config` or `--configfile` argument to spec
 To run AAVolve using one core, for one read file and using apptainer to supply dependencies:
 
 ```
-snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta>
+snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta> sample_name=<name_for_sample>
 ```
 
 Where the `splint_file` argument can be omitted for non Nanopore R2C2 data.
 
 See the [`snakemake` documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html) for more command line options, including cluster execution and profiles.
+
+If singularity is installed instead of the newer apptainer, replace the `--use-apptainer` flag with `--use-singularity`.
 
 ### Config options
 
@@ -73,8 +75,34 @@ snakemake --use-apptainer --cores 1 --config samples=<path to csv>
 
 ## Outputs
 
-AAVolve produces several outputs, which will appear in the `out` folder in  may be useful depending on the library to be analysed:
+AAVolve produces several outputs, which will appear in the `out` folder in  may be useful depending on the library to be analysed.  Note that most outputs are tabular, but are compressed with `gzip` and will require decompression before opening in a spreadsheet reader (e.g. Microsoft Excel).
 
-- Summary of results
-- 
+#### Overview
+
+- Summary of results: `out/qc/<sample_name>_report.html`
+- Number of reads at each stage of processing: `out/qc/<sample_name>_read-counts.tsv`
+
+#### Unique sequences
+
+Several files contain the unique sequences observed in the dataset, after combining and counting sequences that are identical when error-corrected (that is, only considering positions in the read that differ between parental sequences).
+
+- Counts of unique sequences at the amino acid level: `out/corrected/counts/<sample_name>_aa-seq-counts.tsv.gz`
+- Counts of unique sequences at the nucleotide level: `out/corrected/counts/<sample_name>_nt-seq-counts.tsv.gz`
+- Distance matrix of highest-count 1000 unique sequences at amino acid level: `out/corrected/dmat/<sample_name>_first_aa-seq.tsv.gz` and `out/corrected/dmat/<sample_name>__first_aa-seq.png`
+- Distance matrix of randomly selected 1000 unique sequences at amino acid level: `out/corrected/dmat/<sample_name>__first_aa-seq.tsv.gz` and `out/corrected/dmat/<sample_name>_first_aa-seq.png`
+- Distance matrix of highest-count 1000 unique sequences at nucleotide level: `out/corrected/dmat/<sample_name>_first_nt-seq.tsv.gz` and `out/corrected/dmat/<sample_name>__first_aa-seq.png`
+- Distance matrix of randomly selected 1000 sequences at nucleotide level: `out/corrected/dmat/<sample_name>_first_nt-seq.tsv.gz` and `out/corrected/dmat/<sample_name>_first_aa-seq.png`
+
+#### Variants
+
+Variants are positions in the read where parents or reads differ in their sequence from the reference.  AAVolve generally only considers variants that originated from a parental sequence, or are very frequent in the dataset, but all variants are available for analysis if required.  Each variant has a position in the reference (which is the [0-based](https://www.biostars.org/p/84686/) coordinate of the variant) and a type (sub[stitution], del[etion], ins[ertion]).
+
+-  Observed frequency of all variants in reads: `out/variants/frequency/<sample_name>_all.tsv.gz`
+-  Observed frequency of parental variants: `out/variants/frequency/<sample_name>_high.tsv.gz`
+-  Observed frequency of high-frequency variants (those with a frequency above `non_parental_freq` parameter): `out/variants/frequency/<sample_name>_high.tsv.gz`
+-  Observed frequency of parents at each variant position: `out/prarents/freqs/<sample_name>_assigned-parents.tsv.gz`
+-  Variants in each read (sequence): `out/pivot/<sample_name>_seq.tsv.gz`
+-  Assigned parents at each variant position in each read: `out/parents/assigned/<sample_name>_assigned-parents.tsv.gz`
+
+
 
