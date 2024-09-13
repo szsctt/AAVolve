@@ -88,6 +88,7 @@ Several files contain the unique sequences observed in the dataset, after combin
 
 - Counts of unique sequences at the amino acid level: `out/corrected/counts/<sample_name>_aa-seq-counts.tsv.gz`
 - Counts of unique sequences at the nucleotide level: `out/corrected/counts/<sample_name>_nt-seq-counts.tsv.gz`
+- Counts of unique combinations of parents: `out/parents/counts/<sample_name>_parent-counts.tsv.gz`
 - Distance matrix of highest-count 1000 unique sequences at amino acid level: `out/corrected/dmat/<sample_name>_first_aa-seq.tsv.gz` and `out/corrected/dmat/<sample_name>__first_aa-seq.png`
 - Distance matrix of randomly selected 1000 unique sequences at amino acid level: `out/corrected/dmat/<sample_name>__first_aa-seq.tsv.gz` and `out/corrected/dmat/<sample_name>_first_aa-seq.png`
 - Distance matrix of highest-count 1000 unique sequences at nucleotide level: `out/corrected/dmat/<sample_name>_first_nt-seq.tsv.gz` and `out/corrected/dmat/<sample_name>__first_aa-seq.png`
