@@ -1,0 +1,65 @@
+AAVolve
+Copyright 2024 Children’s Medical Research Institute
+
+
+The following components are included in this product:
+
+C3POa
+https://github.com/christopher-vollmers/C3POa
+Copyright 1989, 1991 Free Software Foundation, Inc.
+Licensed under the GNU General Public Licence, Version 2.0 
+
+Racon
+https://github.com/isovic/racon
+Copyright 2016 Ivan Sović, Robert Vaser, Mile Šikić
+Licensed under the MIT License
+
+abPOA
+https://github.com/yangao07/abPOA
+Copyright 2020 Yan Gao
+Licensed under the MIT License
+
+Conk
+https://github.com/rvolden/conk
+Copyright 2020 Roger Volden
+Licensed under the MIT License
+
+Blat
+https://genome.ucsc.edu/FAQ/FAQblat.html#blat3
+Copyright 2001 UC Regents
+See http://genome.ucsc.edu/license/ for licence details
+
+Python
+https://www.python.org/
+Copyright 2001-2023 Python Software Foundation
+See https://docs.python.org/3/license.html#psf-license for licence details
+
+Micromamba
+https://github.com/mamba-org/micromamba-docker
+Copyright 2021-2024 micromamba-docker contributors
+Apache License, Version 2.0
+
+minimap2
+https://github.com/lh3/minimap2
+Copyright 2018 Dana-Farber Cancer Institute, 2017-2018 Broad Institute, Inc.
+MIT License 
+
+samtools	
+https://www.htslib.org/
+Copyright 2008-2024 Genome Research Ltd.
+MIT/Expat License 
+
+papermill	
+https://github.com/nteract/papermill
+Copyright 2017 nteract
+BSD 3-Clause License
+
+quarto	
+https://github.com/quarto-dev/quarto-cli
+Copyright 2020-2023 Posit Software, PBC
+MIT License 
+
+mafft
+https://mafft.cbrc.jp/alignment/software/
+Copyright 2013 Kazutaka Katoh
+See https://mafft.cbrc.jp/alignment/software/ for licence details
