@@ -11,10 +11,16 @@ To run with a local installation of `snakemake` and `apptainer`, clone this repo
 snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> sample_name=<name_for_sample>
 ```
 
+If singularity is installed instead of the newer apptainer, replace the `--use-apptainer` flag with `--use-singularity`:
+
+```
+snakemake --use-singularity --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> sample_name=<name_for_sample>
+```
+
 For Nanopore R2C2 data (np-cc), please also specify a path to a fasta file containing the splint:
 
 ```
-snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta> sample_name=<name_for_sample>
+snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> splint_file=<path_to_fasta> sample_name=<name_for_sample>
 ```
 
 Look for outputs in the `out` folder.
@@ -37,14 +43,18 @@ AAVolve makes use of `snakemake's` `--config` or `--configfile` argument to spec
 To run AAVolve using one core, for one read file and using apptainer to supply dependencies:
 
 ```
-snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, or pb> splint_file=<path_to_fasta> sample_name=<name_for_sample>
+snakemake --use-apptainer --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> splint_file=<path_to_fasta> sample_name=<name_for_sample>
 ```
 
-Where the `splint_file` argument can be omitted for non Nanopore R2C2 data.
+Where the `splint_file` argument can be omitted for non Nanopore R2C2 data. 
 
 See the [`snakemake` documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html) for more command line options, including cluster execution and profiles.
 
-If singularity is installed instead of the newer apptainer, replace the `--use-apptainer` flag with `--use-singularity`.
+If singularity is installed instead of the newer apptainer, replace the `--use-apptainer` flag with `--use-singularity`:
+
+```
+snakemake --use-singularity --cores 1 --config read_file=<path to fastq> parent_file=<path to fasta> seq_tech=<np, np-cc, pb or sg> splint_file=<path_to_fasta> sample_name=<name_for_sample>
+```
 
 ### Config options
 
