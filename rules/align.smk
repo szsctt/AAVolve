@@ -1,5 +1,5 @@
 import numpy as np
-from aavolve.snakemake_helpers import get_reads, get_reference
+from aavolve.snakemake_helpers import get_reads, get_reference, minimap2_params_with_default
 
 # map to one of the parental references.  The choice of reference is arbitrary
 rule align:
@@ -12,9 +12,11 @@ rule align:
     conda: "../deps/align/env.yml"
     container: "docker://szsctt/lr_align"
     threads: 8
+    params:
+        minimap2_params = lambda wildcards: minimap2_params_with_default(wildcards, samples),
     shell:
         """
-        minimap2 -t {threads} -ax map-hifi {input.reference} {input.reads} -B 1.5 --end-bonus 5 --MD |\
+        minimap2 -t {threads} -a {params.minimap2_params} {input.reference} {input.reads} --MD |\
             samtools sort -o {output.aligned} -
         
         samtools index {output.aligned}
