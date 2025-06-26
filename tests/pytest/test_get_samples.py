@@ -647,17 +647,6 @@ class TestCheckData:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
 
-
-    def test_check_data_minimap2_params_non_string_bad(self, sample_df):
-        """
-        Check that an exception is raised if minimap2_params is present and not a string
-        """
-        sample_df['minimap2_params'] = [None]  # or you could use 123, np.nan, etc.
-        expected_error = "Column 'minimap2_params' must be a string: found value None in row 0"
-        with pytest.raises(ValueError) as error:
-            check_data(sample_df)
-        assert error.value.args[0] == expected_error
-
     @pytest.mark.parametrize("bad_val", [None, 123, 1.5, np.nan, [], {}])
     def test_check_data_minimap2_params_non_string(self, sample_df, bad_val):
         """
