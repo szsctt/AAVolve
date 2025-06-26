@@ -3,9 +3,9 @@ import pytest
 import numpy as np
 import pandas as pd
 from aavolve.snakemake_helpers import (
-    get_column_by_sample, is_fastq, get_reads_for_counting, get_dmat_input, format_input_reads, get_parents, fill_parents, get_reference
+    get_column_by_sample, is_fastq, get_reads_for_counting, get_dmat_input, format_input_reads, 
+    get_parents, fill_parents, get_reference, minimap2_params_with_default
     )
-
 
 class TestGetColumnBySample:
     
@@ -66,6 +66,44 @@ class TestGetReference:
             result = get_reference(wildcards, samples)
             assert result == exp
 
+class TestMinimap2ParamsWithDefault:
+
+    class TestMinimap2ParamsWithDefault:
+    
+        @pytest.mark.parametrize("params, exp", [
+            ('', '-x map-hifi -B 1.5 --end-bonus 5'),
+            ('-k 15', '-k 15 -x map-hifi -B 1.5 --end-bonus 5'),
+            ('-w 10', '-w 10 -x map-hifi -B 1.5 --end-bonus 5'),
+            ('-B 1.5', '-B 1.5 -x map-hifi --end-bonus 5'),
+            ('-k 15 -w 10 -B 1.5', '-k 15 -w 10 -B 1.5 -x map-hifi --end-bonus 5'),
+            ('--end-bonus 10', '--end-bonus 10 -x map-hifi -B 1.5'),
+        ])
+        def test_minimap2_params_with_default(self, params, exp):
+            wildcards = SimpleNamespace(sample='sample1')
+            samples = pd.DataFrame({'parent_name': ['parent1', 'parent2', 'parent1'],
+                                    'sample_name': ['sample1', 'sample2', 'sample3'],
+                                    'reference_file': ['ref1.fa', 'ref2.fa', 'ref1.fa'],
+                                    'minimap2_params': [params, params, params]})
+            assert minimap2_params_with_default(wildcards, samples) == exp
+    
+        def test_missing_minimap2_params_column(self):
+            wildcards = SimpleNamespace(sample='sample1')
+            samples = pd.DataFrame({'parent_name': ['parent1'],
+                                    'sample_name': ['sample1'],
+                                    'reference_file': ['ref1.fa']})
+            # Should use all defaults if column is missing
+            assert minimap2_params_with_default(wildcards, samples) == '-x map-hifi -B 1.5 --end-bonus 5'
+    
+        @pytest.mark.parametrize("invalid_val", [None, np.nan])
+        def test_invalid_minimap2_params_value(self, invalid_val):
+            wildcards = SimpleNamespace(sample='sample1')
+            samples = pd.DataFrame({'parent_name': ['parent1'],
+                                    'sample_name': ['sample1'],
+                                    'reference_file': ['ref1.fa'],
+                                    'minimap2_params': [invalid_val]})
+            # Should error if not string
+            with pytest.raises(ValueError):
+                minimap2_params_with_default(wildcards, samples)
 
 class TestGetParents:
     

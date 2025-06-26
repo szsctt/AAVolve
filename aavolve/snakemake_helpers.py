@@ -11,6 +11,26 @@ def is_fastq(file):
     return any((file.endswith('.fastq'), file.endswith('.fastq.gz'), file.endswith('.fq'), file.endswith('.fq.gz')))
 
 
+def minimap2_params_with_default(wildcards, samples):
+    try:
+        # Get user-defined parameters from the samples DataFrame
+        user_params = get_column_by_sample(wildcards, samples, "minimap2_params")
+    except KeyError:
+        # If the column does not exist, return default parameters
+        return "-x map-hifi -B 1.5 --end-bonus 5"
+    if not isinstance(user_params, str):
+        raise ValueError(f"Expected 'minimap2_params' to be a string, got {type(user_params)}")
+    # Ensure -x or --preset is present
+    if "-x" not in user_params and "--preset" not in user_params:
+        user_params += f" -x map-hifi"
+    # Ensure -B is present
+    if "-B" not in user_params and "--score-N" not in user_params:
+        user_params += " -B 1.5"
+    # Ensure --end-bonus is present
+    if "--end-bonus" not in user_params:
+        user_params += " --end-bonus 5"
+    return user_params.strip()
+
 #### align ####
 
 def get_reads(wildcards, samples):
