@@ -13,7 +13,7 @@ rule align:
     container: "docker://szsctt/lr_align"
     threads: 8
     params:
-        minimap2_params = lambda wildcards: minimap2_params_with_default(wildards, samples),
+        minimap2_params = lambda wildcards: minimap2_params_with_default(wildcards, samples),
     shell:
         """
         minimap2 -t {threads} -a {params.minimap2_params} {input.reference} {input.reads} --MD |\
