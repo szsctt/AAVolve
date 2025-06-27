@@ -658,6 +658,29 @@ class TestCheckData:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
 
+    def test_check_data_parent_name_minimap2_params_nonunique_parent(self, sample_df):
+        """
+        Check that an exception is raised if parent_name is not unique for minimap2_params
+        """
+        sample_df = pd.concat([sample_df, sample_df]).reset_index(drop=True)
+        sample_df['sample_name'] = ['sample1', 'sample2']
+        sample_df['parent_name'] = ['parent1', 'parent1']
+        sample_df['minimap2_params'] = ['-x map-ont', '-x map-hifi']
+        expected_error = "Each parent name (column 'parent_name') must always correspond to the same minimap2 parameters (column 'minimap2_params'). Found multiple minimap2 parameters for the same parent name."
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+
+    def test_check_data_parent_name_minimap2_params_nonunique_param(self, sample_df):
+        """
+        The same parameters for different parents should not raise an error
+        """
+        sample_df = pd.concat([sample_df, sample_df])
+        sample_df['sample_name'] = ['sample1', 'sample2']
+        sample_df['parent_name'] = ['parent1', 'parent2']
+        sample_df['parent_file'] = ['tests/data/references/wtAAV2.fa', 'tests/data/references/AAV2_AAV3.fa']
+        sample_df['minimap2_params'] = ['-x map-ont', '-x map-ont']
+        check_data(sample_df)
 
 class TestGetSamples:
 

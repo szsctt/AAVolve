@@ -7,17 +7,44 @@ def get_column_by_sample(wildcards, samples, column_name):
     assert len(samples.sample_name) == len(samples.sample_name.unique()), "Sample names are not unique"
     return {k:v for k, v in zip(samples.sample_name, samples[column_name])}[wildcards.sample]
 
+def get_column_by_parent(wildcards, samples, column_name):
+    # check that column exists
+    if column_name not in samples.columns:
+        raise KeyError(f"Column '{column_name}' not found in samples DataFrame")
+    # check that each parent_name corresponds to the same column value
+    test = samples[['parent_name', column_name]].drop_duplicates() # unique combinations of parent_name and column_name
+    counts = test.groupby('parent_name').size().reset_index(name='count') # each parent should only appear once
+    assert all(counts['count'] == 1)
+    return {k:v for k, v in zip(samples.parent_name, samples[column_name])}[wildcards.sample]
+
+
 def is_fastq(file):
     return any((file.endswith('.fastq'), file.endswith('.fastq.gz'), file.endswith('.fq'), file.endswith('.fq.gz')))
 
 
 def minimap2_params_with_default(wildcards, samples):
-    try:
-        # Get user-defined parameters from the samples DataFrame
-        user_params = get_column_by_sample(wildcards, samples, "minimap2_params")
-    except KeyError:
-        # If the column does not exist, return default parameters
-        return "-x map-hifi -B 1.5 --end-bonus 5"
+    default = "-x map-hifi -B 1.5 --end-bonus 5"
+    if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
+        raise ValueError(f"Sample {wildcards.sample} not found in samples DataFrame")
+    if wildcards.sample in set(samples.sample_name) and wildcards.sample in set(samples.parent_name):
+        raise ValueError(f"Sample {wildcards.sample} is both a sample and a parent, please clarify which one to use")
+    
+    # get params from samples
+    user_params = default
+    if wildcards.sample in set(samples.parent_name):
+        # If the sample is a parent, use the parent's minimap2 parameters
+        try:
+            user_params = get_column_by_parent(wildcards, samples, "minimap2_params")
+        except KeyError:
+            pass
+    if wildcards.sample in set(samples.sample_name):
+        # If the sample is not a parent, use the sample's minimap2 parameters
+        try:
+            user_params = get_column_by_sample(wildcards, samples, "minimap2_params")
+        except KeyError:
+            pass
+    
+    # add default parameters if not provided
     if not isinstance(user_params, str):
         raise ValueError(f"Expected 'minimap2_params' to be a string, got {type(user_params)}")
     # Ensure -x or --preset is present
