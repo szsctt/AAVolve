@@ -673,7 +673,7 @@ class TestCheckData:
         """
         Check that an exception is raised if parent_name is not unique for minimap2_params
         """
-        sample_df = pd.concat([sample_df, sample_df])
+        sample_df = pd.concat([sample_df, sample_df]).reset_index(drop=True)
         sample_df['sample_name'] = ['sample1', 'sample2']
         sample_df['parent_name'] = ['parent1', 'parent1']
         sample_df['minimap2_params'] = ['-x map-ont', '-x map-hifi']
