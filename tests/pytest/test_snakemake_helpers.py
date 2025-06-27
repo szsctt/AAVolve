@@ -55,6 +55,15 @@ class TestGetColumnByParent:
         with pytest.raises(AssertionError):
             get_column_by_parent(wildcards, samples, 'some_col')
 
+    def test_get_column_by_parent_nonunique_2(self):
+        # Test with a valid parent but non-unique values in the column - this is ok
+        wildcards = SimpleNamespace(sample='parent1')
+        samples = pd.DataFrame({
+            'parent_name': ['parent1', 'parent2'],
+            'some_col': [42, 42]
+        })
+        assert get_column_by_parent(wildcards, samples, 'some_col') == 42
+
     def test_get_column_by_parent_column_missing(self):
         wildcards = SimpleNamespace(sample='parent1')
         samples = pd.DataFrame({

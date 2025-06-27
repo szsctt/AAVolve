@@ -8,9 +8,13 @@ def get_column_by_sample(wildcards, samples, column_name):
     return {k:v for k, v in zip(samples.sample_name, samples[column_name])}[wildcards.sample]
 
 def get_column_by_parent(wildcards, samples, column_name):
-    # check that combinatinos of parent_name and column are unique
-    test = samples[['parent_name', column_name]].drop_duplicates()
-    assert len(test.parent_name) == len(test.parent_name.unique()), f"Parent names are not unique for column {column_name}"
+    # check that column exists
+    if column_name not in samples.columns:
+        raise KeyError(f"Column '{column_name}' not found in samples DataFrame")
+    # check that each parent_name corresponds to the same column value
+    test = samples[['parent_name', column_name]].drop_duplicates() # unique combinations of parent_name and column_name
+    counts = test.groupby('parent_name').size().reset_index(name='count') # each parent should only appear once
+    assert all(counts['count'] == 1)
     return {k:v for k, v in zip(samples.parent_name, samples[column_name])}[wildcards.sample]
 
 
