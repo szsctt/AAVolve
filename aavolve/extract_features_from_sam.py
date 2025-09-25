@@ -202,9 +202,16 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
 
           try:
             changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
-          except:
-            import pdb; pdb.set_trace()
-            changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
+          except Exception as e:
+            print(f"Error in identify_aa_change for read {read.query_name}: {e}")
+            print(f"  qpos: {qpos}, rpos: {rpos}, offset: {offset}")
+            print(f"  reference: {read.reference_name}")
+            print(f"  rcodon_start: {rpos // 3 * 3}, rcodon_end: {rpos // 3 * 3 + 3}")
+            if not aa_isolation:
+              print(f"  qcodon_start: {(qpos - offset) // 3 * 3 + offset}, qcodon_end: {(qpos - offset) // 3 * 3 + offset + 3}")
+            print(f"  reference_length: {len(ref_seqs[read.reference_name])}")
+            print(f"  query_length: {len(read.query_sequence)}")
+            raise 
             
           sub = Substitution(rpos = rpos, rseq = rseq, 
                               qseq = query_bases, changes_aa=changes_aa)
