@@ -15,8 +15,11 @@ from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 
-import seaborn as sns
+# Set matplotlib to use non-GUI backend before importing pyplot
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from aavolve.utils import use_open, MAX_SEQS
 

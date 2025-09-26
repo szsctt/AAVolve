@@ -284,6 +284,22 @@ def check_data(samples):
         if row['max_group_distance'] < 0 or row['max_group_distance'] > 1:
             raise ValueError(f"Column 'max_group_distance' must be a float between 0 and 1: found value {row['max_group_distance']} in row {i}")
 
+
+    # check that if minimap2_params is specified, it is a string
+    if 'minimap2_params' in samples.columns:
+        for i, row in samples.iterrows():
+            if not isinstance(row['minimap2_params'], str):
+                raise ValueError(f"Column 'minimap2_params' must be a string: found value {row['minimap2_params']} in row {i}")
+    
+    # check that each parent_name value corresponds to only one minimap2_params value
+    if 'minimap2_params' in samples.columns:
+        parent_param_combos = samples.groupby(['parent_name', 'minimap2_params']).size().reset_index(name='count')
+        # check that a parent doesn't appear twice with different minimap2_params
+        parent_counts = parent_param_combos.groupby('parent_name').size().reset_index(name='count')
+        if any(parent_counts['count'] > 1):
+            raise ValueError("Each parent name (column 'parent_name') must always correspond to the same minimap2 parameters (column 'minimap2_params'). Found multiple minimap2 parameters for the same parent name.")
+
+
     return samples
 
 def get_samples(config):

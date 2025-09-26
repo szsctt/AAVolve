@@ -3,6 +3,7 @@ import tempfile
 import os
 
 import pytest
+import numpy as np
 import pandas as pd
 
 from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
@@ -645,6 +646,41 @@ class TestCheckData:
         with pytest.raises(Exception) as error:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
+
+    @pytest.mark.parametrize("bad_val", [None, 123, 1.5, np.nan, [], {}])
+    def test_check_data_minimap2_params_non_string(self, sample_df, bad_val):
+        """
+        Check that an exception is raised if minimap2_params is present and not a string
+        """
+        sample_df['minimap2_params'] = [bad_val]
+        expected_error = f"Column 'minimap2_params' must be a string: found value {bad_val} in row 0"
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+
+    def test_check_data_parent_name_minimap2_params_nonunique_parent(self, sample_df):
+        """
+        Check that an exception is raised if parent_name is not unique for minimap2_params
+        """
+        sample_df = pd.concat([sample_df, sample_df]).reset_index(drop=True)
+        sample_df['sample_name'] = ['sample1', 'sample2']
+        sample_df['parent_name'] = ['parent1', 'parent1']
+        sample_df['minimap2_params'] = ['-x map-ont', '-x map-hifi']
+        expected_error = "Each parent name (column 'parent_name') must always correspond to the same minimap2 parameters (column 'minimap2_params'). Found multiple minimap2 parameters for the same parent name."
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert error.value.args[0] == expected_error
+
+    def test_check_data_parent_name_minimap2_params_nonunique_param(self, sample_df):
+        """
+        The same parameters for different parents should not raise an error
+        """
+        sample_df = pd.concat([sample_df, sample_df])
+        sample_df['sample_name'] = ['sample1', 'sample2']
+        sample_df['parent_name'] = ['parent1', 'parent2']
+        sample_df['parent_file'] = ['tests/data/references/wtAAV2.fa', 'tests/data/references/AAV2_AAV3.fa']
+        sample_df['minimap2_params'] = ['-x map-ont', '-x map-ont']
+        check_data(sample_df)
 
 class TestGetSamples:
 
