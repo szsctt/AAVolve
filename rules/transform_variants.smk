@@ -291,7 +291,7 @@ rule report:
     shell:
         """
         pwd
-        papermill {report_template} {output.tmp_notebook} \
+        papermill {input.report_template} {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
