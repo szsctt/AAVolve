@@ -280,7 +280,7 @@ rule report:
         dmat_aa_first = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="first", allow_missing=True),
         dmat_nt_random = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="random", allow_missing=True),
         dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
-        report_template = workflow.source_path("aavolve/report.ipynb")
+        report_template = workflow.basedir("aavolve/report.ipynb")
     output:
         report = "out/qc/{sample}_report.html",
         tmp_notebook = "out/qc/{sample}_report.ipynb",
