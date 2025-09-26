@@ -280,6 +280,7 @@ rule report:
         dmat_aa_first = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="first", allow_missing=True),
         dmat_nt_random = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="random", allow_missing=True),
         dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
+        report_template = workflow.source_path("aavolve/report.ipynb")
     output:
         report = "out/qc/{sample}_report.html",
         tmp_notebook = "out/qc/{sample}_report.ipynb",
@@ -289,7 +290,8 @@ rule report:
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
-        papermill aavolve/report.ipynb {output.tmp_notebook} \
+        pwd
+        papermill {report_template} {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
@@ -303,11 +305,3 @@ rule report:
         cd out/qc
         quarto render {params.report_basename}
         """
-
-'''
-
-        #export XDG_RUNTIME_DIR={params.tmpdir_1}
-        #export XDG_CACHE_HOME={params.tmpdir_2}
-        #export XDG_DATA_HOME={params.tmpdir_3}
-        #mkdir -p {params.tmpdir_1} {params.tmpdir_2} {params.tmpdir_3}
-        #quarto render {output.tmp_notebook} --output - > {output.report}'''
