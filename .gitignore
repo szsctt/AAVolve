@@ -1,5 +1,6 @@
 .snakemake
 **/__pycache__
+**sif
 out
 data
 config
@@ -13,3 +14,4 @@ aavolve/report.html
 aavolve.egg-info
 abpoa.messages
 apboa.messages
+tidehunter_test/output
