@@ -159,6 +159,11 @@ def main(argv=None):
     # plot
     plt.figure(figsize=(9, 5))
     # draw frequency polygon (lines through bin centers)
+    # vertical reference at 3 repeats
+    try:
+        plt.axvline(x=3, color='k', linestyle=':', linewidth=1)
+    except Exception:
+        pass
     if args.log_x:
         # ensure centers are positive; if zeros or negatives exist, shift all centers by +1
         all_centers = [c for c in [t_centers, c_centers, tn_centers] if c is not None]
@@ -171,20 +176,20 @@ def main(argv=None):
             if tn_centers is not None:
                 tn_centers = tn_centers + shift
         plt.xscale('log')
-        plt.plot(t_centers, t_counts, color="C0", lw=2, marker='o', label="tidehunter freq poly")
+        plt.plot(t_centers, t_counts, color="C0", lw=2, marker='o', label="tidehunter freq poly", alpha=0.8)
         if tn_centers is not None:
-            plt.plot(tn_centers, tn_counts, color="C2", lw=2, marker='o', label="tidehunter_noargs freq poly")
-        plt.plot(c_centers, c_counts, color="C1", lw=2, marker='o', label="C3POa freq poly")
+            plt.plot(tn_centers, tn_counts, color="C2", lw=2, marker='o', label="tidehunter_noargs freq poly", alpha=0.7)
+        plt.plot(c_centers, c_counts, color="C1", lw=2, marker='o', label="C3POa freq poly", alpha=0.7)
         # annotate if we shifted
         if shift > 0:
             plt.xlabel(f"Repeat count (shifted by +{shift:.1f} for log scale)")
         else:
             plt.xlabel("Repeat count")
     else:
-        plt.plot(t_centers, t_counts, color="C0", lw=2, marker='o', label="tidehunter freq poly")
+        plt.plot(t_centers, t_counts, color="C0", lw=2, marker='o', label="tidehunter freq poly", alpha=0.8)
         if tn_centers is not None:
-            plt.plot(tn_centers, tn_counts, color="C2", lw=2, marker='o', label="tidehunter_noargs freq poly")
-        plt.plot(c_centers, c_counts, color="C1", lw=2, marker='o', label="C3POa freq poly")
+            plt.plot(tn_centers, tn_counts, color="C2", lw=2, marker='o', label="tidehunter_noargs freq poly", alpha=0.7)
+        plt.plot(c_centers, c_counts, color="C1", lw=2, marker='o', label="C3POa freq poly", alpha=0.7)
     # ylabel/title/legend
     plt.ylabel("Frequency (reads)")
     plt.title("Repeat-count distribution: tidehunter vs C3POa")
