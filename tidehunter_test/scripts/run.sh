@@ -155,7 +155,7 @@ write_sample "$C3_FASTA" tidehunter_test/output/msa/c3poa_sample.fa
 echo "Attempting to run MAFFT on samples (will skip if mafft not found)"
 run_mafft() {
   local in_fa="$1"; local out_aln="$2"
-    micromamba run -n tidehunter_env mafft --auto "$in_fa" > "$out_aln"
+    micromamba run -n tidehunter_env mafft --adjustdirection --auto "$in_fa" > "$out_aln"
 }
 
 run_mafft tidehunter_test/output/msa/tidehunter_sample.fa tidehunter_test/output/msa/tidehunter_sample.aln.fa
