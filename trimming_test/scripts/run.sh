@@ -35,12 +35,12 @@ if [ ! -f lr_c3poa_latest.sif ]; then
     echo "Downloading C3POa Singularity image..."
     singularity pull docker://szsctt/lr_c3poa:latest
 fi
-#/usr/bin/time -v singularity exec lr_c3poa_latest.sif \
-#    /C3POa/C3POa.py \
-#    -r $READS \
-#    -s $SPLINT \
-#    -o $OUTC3POA \
-#    -n 40 > $OUTC3POA/c3poa_time.txt 2>&1
+/usr/bin/time -v singularity exec lr_c3poa_latest.sif \
+    /C3POa/C3POa.py \
+    -r $READS \
+    -s $SPLINT \
+    -o $OUTC3POA \
+    -n 40 > $OUTC3POA/c3poa_time.txt 2>&1
 
 READS="$OUTC3POA/splint/R2C2_Consensus.fasta"
 

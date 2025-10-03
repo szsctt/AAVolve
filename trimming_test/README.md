@@ -222,6 +222,9 @@ BBDuk (right trim):
    - **BBDuk**: Reports k-mer trimming statistics and base pair changes
    - **Trimmomatic**: Only reports survival/dropout counts, not how many reads were actually trimmed
 
+6. **Multiple Sequence Alignments**:
+   - Cutadapt linked mode shows the most clean reads with adapters removed
+
 ## Notes
 
 - FASTQ conversion is required because Trimmomatic only accepts FASTQ format (dummy Q40 quality scores added)
