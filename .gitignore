@@ -12,4 +12,6 @@ aavolve/report_files
 aavolve/report.html
 aavolve.egg-info
 abpoa.messages
+trimming_test/output
 apboa.messages
+*.sif
