@@ -60,7 +60,8 @@ snakemake --use-singularity --cores 1 --config read_file=<path to fastq> parent_
 
 For more than one sample, specify parameters and inputs in a comma-sepearated file with one row per sample (fastq file), and the following columns:
 
-sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file,splint_file,non_parental_freq
+
+sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file,splint_file,non_parental_freq,trim,adapter_5,adapter_3
 
 - `sample_name`: A name for the sample
 - `parent_name` (optional): A name for the parents of the sample
@@ -78,11 +79,21 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `max_group_distance` (optional): When grouping variants, assign a parent if there are at most this fraction of the variants that differ between a parent and the read. For example, in a group of 6 variants, if this parameter is set to 0.2, a parent that has one variant that differs from the read will still be assigned to the group.  Note that if `group_vars` is `False`, variants must match a parent otherwise they will be set to `NA`, regardless of the value for this parameter (default: 0.2).
 - `minimap2_params` (optional): Additional parameters to pass to minimap2 during alignment. If a preset (`-x`), end bonus (`--end-bonus`) or mismatch penalty (`-B`) are not specified, the defaults `-x map-hifi`, `-B 1.5` and `--end-bonus 5` will be used. (default: -x map-hifi -B 1.5 --end-bonus 5)
 
+- `trim` (optional): Set to `True` to enable adapter trimming for a sample. If enabled, both `adapter_5` and `adapter_3` must be provided. Trimming is never performed for parent samples. (default: False)
+- `adapter_5` (required if `trim` is `True`): The 5' adapter sequence for trimming.
+- `adapter_3` (required if `trim` is `True`): The 3' adapter sequence for trimming.
+
+
 To provide this file to `snakemake`:
 
 ```
 snakemake --use-apptainer --cores 1 --config samples=<path to csv>
 ```
+
+#### Trimming
+
+C3POa often leaves pieces of the splint sequence at the ends of the consensus reads. Use trimming to remove these - it's useful to first run without trimming and do a multiple sequence alignment of the highest-count sequences with some of the parents to identify the adapter sequences to trim.
+
 
 ## Outputs
 
