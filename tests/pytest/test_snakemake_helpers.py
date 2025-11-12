@@ -13,8 +13,6 @@ from aavolve.snakemake_helpers import (
     get_reads_for_align,
     get_reads_for_counting,
     get_reference,
-    get_trimmed_output_format,
-    get_trimmed_reads_output_path,
     is_fastq,
     minimap2_params_with_default,
     trim_is_enabled,
@@ -130,32 +128,11 @@ class TestTrimmingHelpers:
         wildcards = SimpleNamespace(sample='parent1')
         assert trim_is_enabled(wildcards, samples) is False
 
-    def test_trim_is_enabled_handles_strings(self):
+    def test_trim_is_enabled_raises_on_non_boolean(self):
         samples = self._make_samples(trim=['YES'])
         wildcards = SimpleNamespace(sample='sample1')
-        assert trim_is_enabled(wildcards, samples) is True
-
-    def test_get_trimmed_reads_output_path_fastq(self):
-        samples = self._make_samples(trim=[True])
-        wildcards = SimpleNamespace(sample='sample1')
-        path = get_trimmed_reads_output_path(wildcards, samples)
-        assert path == 'out/trimmed/sample1.trimmed.gz'
-
-    def test_get_trimmed_reads_output_path_fasta(self):
-        samples = self._make_samples(read_file=['reads.fasta'], seq_tech=['sg'], trim=[True])
-        wildcards = SimpleNamespace(sample='sample1')
-        path = get_trimmed_reads_output_path(wildcards, samples)
-        assert path == 'out/trimmed/sample1.trimmed.gz'
-
-    def test_get_trimmed_output_format_fastq(self):
-        samples = self._make_samples(read_file=['reads.fastq.gz'])
-        wildcards = SimpleNamespace(sample='sample1')
-        assert get_trimmed_output_format(wildcards, samples) == 'fastq'
-
-    def test_get_trimmed_output_format_fasta(self):
-        samples = self._make_samples(read_file=['reads.fasta'])
-        wildcards = SimpleNamespace(sample='sample1')
-        assert get_trimmed_output_format(wildcards, samples) == 'fasta'
+        with pytest.raises(ValueError):
+            trim_is_enabled(wildcards, samples)
 
     def test_get_reads_for_align_returns_original_when_trim_disabled(self):
         samples = self._make_samples()
@@ -167,7 +144,7 @@ class TestTrimmingHelpers:
         samples = self._make_samples(trim=[True])
         wildcards = SimpleNamespace(sample='sample1')
         reads = get_reads_for_align(wildcards, samples)
-        assert reads == 'out/trimmed/sample1.fastq.gz'
+        assert reads == 'out/trimmed/sample1.trimmed.gz'
 
     def test_get_linked_adapters_for_sample_disabled(self):
         samples = self._make_samples()
