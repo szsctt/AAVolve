@@ -3,8 +3,6 @@ from aavolve.snakemake_helpers import (
     get_reads,
     get_reads_for_align,
     get_reference,
-    get_trimmed_output_format,
-    get_trimmed_reads_output_path,
     minimap2_params_with_default,
 )
 
@@ -13,7 +11,6 @@ rule trim_reads:
     """
     Trim adapters from reads using cutadapt when configured (trim=True).
     Uses linked-adapter syntax '<5'...<3'' and retains only trimmed reads (--discard-untrimmed).
-    This rule will only be required for samples where `trim` is True in the config.
     """
     input:
         reads = lambda wildcards: get_reads(wildcards, samples)
@@ -26,7 +23,7 @@ rule trim_reads:
     shell:
         """
         # linked adapters validated in params function; if none, this rule should not be required
-    cutadapt -j {threads} -a '{params.linked}' --discard-untrimmed -o - {input.reads} | pigz -p {threads} > {output.trimmed}
+        cutadapt -j {threads} -a '{params.linked}' --discard-untrimmed -o - {input.reads} | pigz -p {threads} > {output.trimmed}
         """
 
 
