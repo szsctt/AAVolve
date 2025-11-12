@@ -128,28 +128,13 @@ def trim_is_enabled(wildcards, samples):
     except KeyError:
         return False
 
-    # Values should already be validated/standardised in get_samples, but
-    # convert defensively to bool to avoid surprises.
-    if isinstance(trim_value, str):
-        trim_value = trim_value.strip().lower() in ('true', '1', 'yes', 'y')
+    if not isinstance(trim_value, bool):
+        raise ValueError(
+            f"Unexpected value for 'trim' column for sample '{wildcards.sample}': {trim_value!r}. "
+            "Expected boolean True/False."
+        )
 
     return bool(trim_value)
-
-
-def get_trimmed_reads_output_path(wildcards, samples):
-    """Return the canonical trimmed reads path for a sample."""
-    # for fastq inputs tests expect out/trimmed/{sample}.fastq.gz
-    reads = get_reads(wildcards, samples)
-    if is_fastq(reads):
-        return f"out/trimmed/{wildcards.sample}.fastq.gz"
-    return f"out/trimmed/{wildcards.sample}.trimmed.gz"
-
-
-def get_trimmed_output_format(wildcards, samples):
-    """Return the expected output format for cutadapt (fastq or fasta)."""
-
-    reads = get_reads(wildcards, samples)
-    return 'fastq' if is_fastq(reads) else 'fasta'
 
 
 def get_reads_for_align(wildcards, samples):
@@ -160,7 +145,7 @@ def get_reads_for_align(wildcards, samples):
     if not trim_is_enabled(wildcards, samples):
         return reads
 
-    return get_trimmed_reads_output_path(wildcards, samples)
+    return f"out/trimmed/{wildcards.sample}.trimmed.gz"
 
 
 def get_linked_adapters_for_sample(wildcards, samples):
