@@ -9,7 +9,7 @@ import pandas as pd
 from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
                                  DEFAULT_INCLUDE_NON, DEFAULT_GROUP_VARS,
                                  REQUIRED_COLUMNS, SEQ_TECHS, DEFAULT_GROUP_VARS_DIST,
-                                 DEFAULT_MAX_GROUP_DISTANCE)
+                                 DEFAULT_MAX_GROUP_DISTANCE, DEFAULT_TRIM)
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
@@ -397,6 +397,58 @@ class TestCheckData:
         else:
             assert sample_df['min_reps'][0] is None
 
+    def test_check_data_trim_defaults_added(self, sample_df):
+        check_data(sample_df)
+
+        assert 'trim' in sample_df.columns
+        assert sample_df['trim'][0] == DEFAULT_TRIM
+        assert 'adapter_5' in sample_df.columns
+        assert 'adapter_3' in sample_df.columns
+        assert sample_df['adapter_5'][0] is None
+        assert sample_df['adapter_3'][0] is None
+
+    def test_check_data_trim_coerces_strings(self, sample_df):
+        sample_df['trim'] = 'Yes'
+        sample_df['adapter_5'] = 'AAA'
+        sample_df['adapter_3'] = 'TTT'
+
+        check_data(sample_df)
+
+        assert sample_df['trim'][0] == True
+        assert sample_df['trim'].dtype == np.dtype('bool')
+        assert sample_df['adapter_5'][0] == 'AAA'
+        assert sample_df['adapter_3'][0] == 'TTT'
+
+    def test_check_data_trim_missing_adapter_columns(self, sample_df):
+        sample_df['trim'] = True
+
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+
+        assert "Missing required column(s" in str(error.value)
+        assert 'adapter_5' in str(error.value)
+        assert 'adapter_3' in str(error.value)
+
+    def test_check_data_trim_empty_adapter_values(self, sample_df):
+        sample_df['trim'] = True
+        sample_df['adapter_5'] = ''
+        sample_df['adapter_3'] = 'TTT'
+
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+
+        assert "column 'adapter_5' is missing or empty" in str(error.value)
+
+    def test_check_data_trim_strips_whitespace(self, sample_df):
+        sample_df['trim'] = True
+        sample_df['adapter_5'] = ' AAA '
+        sample_df['adapter_3'] = ' TTT '
+
+        check_data(sample_df)
+
+        assert sample_df['adapter_5'][0] == 'AAA'
+        assert sample_df['adapter_3'][0] == 'TTT'
+
     def test_check_data_np_cc_splint(self, config):
         """
         Check that an exception is raised if splint file is not specified for np-cc
@@ -722,12 +774,14 @@ class TestGetSamples:
             expected_samples.to_csv(f.name, index=False)
 
             expected_samples['min_reps'] = DEFAULT_MINREPS if seq_tech == 'np-cc' else None
+            expected_samples['trim'] = DEFAULT_TRIM
+            expected_samples['adapter_5'] = None
+            expected_samples['adapter_3'] = None
             expected_samples['non_parental_freq'] = DEFAULT_FREQ
             expected_samples['include_non_parental'] = DEFAULT_INCLUDE_NON
             expected_samples['group_vars'] = DEFAULT_GROUP_VARS
             expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
             expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
-
 
             # pass in both file and config
             config['samples'] = f.name

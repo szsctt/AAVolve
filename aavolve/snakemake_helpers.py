@@ -115,6 +115,90 @@ def get_reference(wildcards, samples):
     # otherwise, just return reference
     return get_column_by_sample(wildcards, samples, 'reference_file')
 
+
+def trim_is_enabled(wildcards, samples):
+    """Return True if adapter trimming is requested for the sample."""
+
+    # parents never undergo trimming
+    if wildcards.sample in set(samples.parent_name):
+        return False
+
+    try:
+        trim_value = get_column_by_sample(wildcards, samples, 'trim')
+    except KeyError:
+        return False
+
+    # Values should already be validated/standardised in get_samples, but
+    # convert defensively to bool to avoid surprises.
+    if isinstance(trim_value, str):
+        trim_value = trim_value.strip().lower() in ('true', '1', 'yes', 'y')
+
+    return bool(trim_value)
+
+
+def get_trimmed_reads_output_path(wildcards, samples):
+    """Return the canonical trimmed reads path for a sample."""
+    # for fastq inputs tests expect out/trimmed/{sample}.fastq.gz
+    reads = get_reads(wildcards, samples)
+    if is_fastq(reads):
+        return f"out/trimmed/{wildcards.sample}.fastq.gz"
+    return f"out/trimmed/{wildcards.sample}.trimmed.gz"
+
+
+def get_trimmed_output_format(wildcards, samples):
+    """Return the expected output format for cutadapt (fastq or fasta)."""
+
+    reads = get_reads(wildcards, samples)
+    return 'fastq' if is_fastq(reads) else 'fasta'
+
+
+def get_reads_for_align(wildcards, samples):
+    """Return the appropriate input for minimap2 alignment, considering trimming."""
+
+    reads = get_reads(wildcards, samples)
+
+    if not trim_is_enabled(wildcards, samples):
+        return reads
+
+    return get_trimmed_reads_output_path(wildcards, samples)
+
+
+def get_linked_adapters_for_sample(wildcards, samples):
+    """Construct the linked-adapter specification for cutadapt, validating inputs."""
+
+    if not trim_is_enabled(wildcards, samples):
+        return None
+
+    try:
+        adapter_5 = get_column_by_sample(wildcards, samples, 'adapter_5')
+        adapter_3 = get_column_by_sample(wildcards, samples, 'adapter_3')
+    except KeyError as err:
+        missing = err.args[0]
+        raise ValueError(
+            f"Trimming is enabled for sample '{wildcards.sample}' but column '{missing}' is missing. "
+            "Please ensure both 'adapter_5' and 'adapter_3' are present in the samples configuration."
+        ) from err
+
+    if not isinstance(adapter_5, str):
+        raise ValueError(
+            f"Trimming is enabled for sample '{wildcards.sample}', but adapter_5 is not a string (value: {adapter_5!r})."
+        )
+    if not isinstance(adapter_3, str):
+        raise ValueError(
+            f"Trimming is enabled for sample '{wildcards.sample}', but adapter_3 is not a string (value: {adapter_3!r})."
+        )
+
+    adapter_5 = adapter_5.strip()
+    adapter_3 = adapter_3.strip()
+
+    if adapter_5 == '' or adapter_3 == '':
+        raise ValueError(
+            f"Trimming is enabled for sample '{wildcards.sample}', but adapter sequences are missing or empty. "
+            "Populate 'adapter_5' and 'adapter_3' in the samples configuration."
+        )
+
+    return f"{adapter_5}...{adapter_3}"
+
 #### variants ####
 
 # rules num_parents
