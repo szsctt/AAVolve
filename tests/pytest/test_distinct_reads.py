@@ -30,7 +30,7 @@ def test_single_column_assigned(tmp_path):
     lines = ["read_id", "r1", "r2", "r3"]
     write_tsv(str(inp), lines)
 
-    cmd = ["python3", "aavolve/distinct_reads.py", "-i", str(inp), "-o", str(out_counts), "-m", str(out_members)]
+    cmd = ["python3", "-m", "aavolve.distinct_reads", "-i", str(inp), "-o", str(out_counts), "-m", str(out_members)]
     subprocess.check_call(cmd)
 
     counts_lines = read_tsv_lines(str(out_counts))
@@ -54,7 +54,7 @@ def test_multi_column_assigned(tmp_path):
     lines = ['read_id\tp1\tp2', 'r1\ta\tb', 'r2\ta\tb', 'r3\tc\td']
     write_tsv(str(inp), lines, gz=True)
 
-    cmd = ["python3", "aavolve/distinct_reads.py", "-i", str(inp), "-o", str(out_counts), "-m", str(out_members)]
+    cmd = ["python3", "-m", "aavolve.distinct_reads", "-i", str(inp), "-o", str(out_counts), "-m", str(out_members)]
     subprocess.check_call(cmd)
 
     counts_lines = read_tsv_lines(str(out_counts))

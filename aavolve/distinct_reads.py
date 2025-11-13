@@ -20,9 +20,9 @@ The module is gz-aware and uses aavolve.utils.use_open for I/O.
 """
 
 import argparse
-import gzip
 import csv
 from collections import defaultdict
+
 from aavolve.utils import use_open
 def main():
     parser = argparse.ArgumentParser(description='Collapse assigned parents to counts and members mapping')
