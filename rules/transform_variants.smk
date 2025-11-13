@@ -139,26 +139,15 @@ rule distinct_reads:
     input:
         reads = rules.assign_parents.output.assigned
     output:
-        counts = "out/parents/counts/{sample}_parent-counts.tsv.gz"
-    params:
-        incat = lambda wildcards, input: 'zcat' if input.reads.endswith('.gz') else 'cat',
-        outzip = lambda wildcards, output: 'gzip' if output.counts.endswith('.gz') else ''
+        counts = "out/parents/counts/{sample}_parent-counts.tsv.gz",
+        members = "out/parents/counts/{sample}_parent-counts-members.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        # header
-        {params.incat} {input.reads}  |\
-        sed -n 1p |\
-        sed 's/read_id/count/' |\
-        {params.outzip} > {output.counts}
-
-        # rest of file
-        python3 -m aavolve.remove_first_column -i {input.reads} |\
-        sort |\
-        uniq -c |\
-        awk -v OFS=$'\\t' '{{$1=$1}};1' |\
-        sort -t $'\\t' -k1,1nr |\
-        {params.outzip} >> {output.counts}
+        python3 -m aavolve.distinct_reads \
+            -i {input.reads} \
+            -o {output.counts} \
+            -m {output.members}
         """
 
 # apply variants to reference to get 'error-corrected' reads
@@ -280,6 +269,7 @@ rule report:
         dmat_aa_first = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="first", allow_missing=True),
         dmat_nt_random = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="random", allow_missing=True),
         dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
+        report_template = lambda wildcards: os.path.join(workflow.basedir, "aavolve/report.ipynb")
     output:
         report = "out/qc/{sample}_report.html",
         tmp_notebook = "out/qc/{sample}_report.ipynb",
@@ -289,7 +279,8 @@ rule report:
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
     shell:
         """
-        papermill /app/aavolve/report.ipynb {output.tmp_notebook} \
+        pwd
+        papermill {input.report_template} {output.tmp_notebook} \
             -p seq_tech {params.seq_tech} \
             -p read_counts {input.counts} \
             -p assigned_parents {input.assigned_counts} \
@@ -303,4 +294,3 @@ rule report:
         cd out/qc
         quarto render {params.report_basename}
         """
-

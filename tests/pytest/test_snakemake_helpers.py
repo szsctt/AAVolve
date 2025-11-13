@@ -3,9 +3,20 @@ import pytest
 import numpy as np
 import pandas as pd
 from aavolve.snakemake_helpers import (
-    get_column_by_sample, get_column_by_parent, is_fastq, get_reads_for_counting, get_dmat_input, format_input_reads, 
-    get_parents, fill_parents, get_reference, minimap2_params_with_default
-    )
+    fill_parents,
+    format_input_reads,
+    get_column_by_parent,
+    get_column_by_sample,
+    get_dmat_input,
+    get_linked_adapters_for_sample,
+    get_parents,
+    get_reads_for_align,
+    get_reads_for_counting,
+    get_reference,
+    is_fastq,
+    minimap2_params_with_default,
+    trim_is_enabled,
+)
 
 class TestGetColumnBySample:
     
@@ -86,6 +97,70 @@ class TestIsFastq:
     ])
     def test_is_fastq(self, name, res):
         assert is_fastq(name) == res
+
+
+class TestTrimmingHelpers:
+
+    def _make_samples(self, **overrides):
+        base = {
+            'sample_name': ['sample1'],
+            'parent_name': ['parent1'],
+            'parent_file': ['parent1.fa'],
+            'reference_file': ['ref.fa'],
+            'read_file': ['reads.fastq.gz'],
+            'seq_tech': ['np'],
+            'min_reps': [np.nan],
+            'trim': [False],
+            'adapter_5': ['AAA'],
+            'adapter_3': ['TTT'],
+        }
+        for key, value in overrides.items():
+            base[key] = value
+        return pd.DataFrame(base)
+
+    def test_trim_is_enabled_false_by_default(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='sample1')
+        assert trim_is_enabled(wildcards, samples) is False
+
+    def test_trim_is_enabled_false_for_parent(self):
+        samples = self._make_samples(trim=[True])
+        wildcards = SimpleNamespace(sample='parent1')
+        assert trim_is_enabled(wildcards, samples) is False
+
+    def test_trim_is_enabled_raises_on_non_boolean(self):
+        samples = self._make_samples(trim=['YES'])
+        wildcards = SimpleNamespace(sample='sample1')
+        with pytest.raises(ValueError):
+            trim_is_enabled(wildcards, samples)
+
+    def test_get_reads_for_align_returns_original_when_trim_disabled(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='sample1')
+        reads = get_reads_for_align(wildcards, samples)
+        assert reads == 'reads.fastq.gz'
+
+    def test_get_reads_for_align_returns_trimmed_when_enabled(self):
+        samples = self._make_samples(trim=[True])
+        wildcards = SimpleNamespace(sample='sample1')
+        reads = get_reads_for_align(wildcards, samples)
+        assert reads == 'out/trimmed/sample1.trimmed.gz'
+
+    def test_get_linked_adapters_for_sample_disabled(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_linked_adapters_for_sample(wildcards, samples) is None
+
+    def test_get_linked_adapters_for_sample_enabled(self):
+        samples = self._make_samples(trim=[True], adapter_5=[' AAA '], adapter_3=['TTT  '])
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_linked_adapters_for_sample(wildcards, samples) == 'AAA...TTT'
+
+    def test_get_linked_adapters_for_sample_missing_sequence(self):
+        samples = self._make_samples(trim=[True], adapter_5=[''], adapter_3=['TTT'])
+        wildcards = SimpleNamespace(sample='sample1')
+        with pytest.raises(ValueError):
+            get_linked_adapters_for_sample(wildcards, samples)
 
 
 class TestGetReference:

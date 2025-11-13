@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
+import re
 
 from aavolve.utils import MAX_SEQS
 
@@ -134,15 +135,22 @@ def parent_heatmap(filename, parent_freq_file):
     counts = df['count']
     
     # get a list of unique parents
-    df = (
-        df
-          # drop count column
-          .drop(columns=['count']) 
-          # replace non_parental_1 etc with non_parental
-          .apply(lambda x: x.str.replace("non_parental_\d+", "non parental", regex=True)) 
-          # replace any values with commas with "multiple"
-          .apply(lambda x: [i if ',' not in i else 'multiple' for i in x])
-          ) 
+    # drop count column
+    df = df.drop(columns=['count'])
+
+    # ensure df is a DataFrame (drop may return Series in degenerate cases)
+    if isinstance(df, pd.Series):
+        df = df.to_frame().T
+
+    # elementwise replace 'non_parental_\d+' and collapse comma-containing values to 'multiple'
+    def norm_val(x):
+        s = str(x)
+        s = re.sub(r'non_parental_\d+', 'non parental', s)
+        if ',' in s:
+            return 'multiple'
+        return s
+
+    df = df.applymap(norm_val)
 
     # get colors for each parent
     color_dict = parent_colors(parent_freq_file)
