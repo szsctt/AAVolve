@@ -1,4 +1,3 @@
-import pytest
 
 from aavolve.utils import read_variant_file
 
