@@ -23,18 +23,7 @@ import argparse
 import gzip
 import csv
 from collections import defaultdict
-
-
-def use_open(path, mode='rt'):
-    """Open a file path which may be gzipped.
-
-    mode should be a text mode like 'rt' or 'wt'.
-    """
-    if path.endswith('.gz'):
-        return gzip.open(path, mode)
-    return open(path, mode)
-
-
+from aavolve.utils import use_open
 def write_gz_or_plain(path, text):
     if path.endswith('.gz'):
         with gzip.open(path, 'wt') as f:
