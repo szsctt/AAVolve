@@ -10,7 +10,7 @@ from aavolve.snakemake_helpers import (
 rule trim_reads:
     """
     Trim adapters from reads using cutadapt when configured (trim=True).
-    Uses linked-adapter syntax '<5'...<3'' and retains only trimmed reads (--discard-untrimmed).
+    Uses linked-adapter syntax '<5>...<3>' and retains only trimmed reads (--discard-untrimmed).
     """
     input:
         reads = lambda wildcards: get_reads(wildcards, samples)
