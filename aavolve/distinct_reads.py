@@ -24,15 +24,6 @@ import gzip
 import csv
 from collections import defaultdict
 from aavolve.utils import use_open
-def write_gz_or_plain(path, text):
-    if path.endswith('.gz'):
-        with gzip.open(path, 'wt') as f:
-            f.write(text)
-    else:
-        with open(path, 'wt') as f:
-            f.write(text)
-
-
 def main():
     parser = argparse.ArgumentParser(description='Collapse assigned parents to counts and members mapping')
     parser.add_argument('-i', '--input', required=True, help='Assigned parents TSV (may be gz)')
