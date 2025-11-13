@@ -97,7 +97,7 @@ C3POa often leaves pieces of the splint sequence at the ends of the consensus re
 
 ## Outputs
 
-AAVolve produces several outputs, which will appear in the `out` folder in  may be useful depending on the library to be analysed.  Note that most outputs are tabular, but are compressed with `gzip` and will require decompression before opening in a spreadsheet reader (e.g. Microsoft Excel).
+AAVolve produces several outputs, which will appear in the `out` folder and may be useful depending on the library to be analysed.  Note that most outputs are tabular, but are compressed with `gzip` and will require decompression before opening in a spreadsheet reader (e.g. Microsoft Excel).
 
 #### Overview
 
