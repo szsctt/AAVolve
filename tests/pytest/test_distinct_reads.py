@@ -1,7 +1,6 @@
 import gzip
 import os
 import subprocess
-import tempfile
 
 
 def write_tsv(path, lines, gz=False):
