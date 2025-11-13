@@ -139,26 +139,15 @@ rule distinct_reads:
     input:
         reads = rules.assign_parents.output.assigned
     output:
-        counts = "out/parents/counts/{sample}_parent-counts.tsv.gz"
-    params:
-        incat = lambda wildcards, input: 'zcat' if input.reads.endswith('.gz') else 'cat',
-        outzip = lambda wildcards, output: 'gzip' if output.counts.endswith('.gz') else ''
+        counts = "out/parents/counts/{sample}_parent-counts.tsv.gz",
+        members = "out/parents/counts/{sample}_parent-counts-members.tsv.gz"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        # header
-        {params.incat} {input.reads}  |\
-        sed -n 1p |\
-        sed 's/read_id/count/' |\
-        {params.outzip} > {output.counts}
-
-        # rest of file
-        python3 -m aavolve.remove_first_column -i {input.reads} |\
-        sort |\
-        uniq -c |\
-        awk -v OFS=$'\\t' '{{$1=$1}};1' |\
-        sort -t $'\\t' -k1,1nr |\
-        {params.outzip} >> {output.counts}
+        python3 -m aavolve.distinct_reads \
+            -i {input.reads} \
+            -o {output.counts} \
+            -m {output.members}
         """
 
 # apply variants to reference to get 'error-corrected' reads

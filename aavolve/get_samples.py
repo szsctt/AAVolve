@@ -12,6 +12,7 @@ DEFAULT_INCLUDE_NON = False
 DEFAULT_GROUP_VARS = True
 DEFAULT_GROUP_VARS_DIST = 4
 DEFAULT_MAX_GROUP_DISTANCE = 0.2
+DEFAULT_TRIM = False
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -199,6 +200,58 @@ def check_data(samples):
         else:
             samples.loc[i, 'min_reps'] = None
 
+    # adapter trimming configuration
+    if 'trim' not in samples.columns:
+        samples['trim'] = [DEFAULT_TRIM] * len(samples)
+    else:
+        def _coerce_trim(value, idx):
+            if isinstance(value, (bool, np.bool_)):
+                return bool(value)
+            if value is None or (isinstance(value, float) and np.isnan(value)):
+                return DEFAULT_TRIM
+            if isinstance(value, str):
+                cleaned = value.strip().lower()
+                if cleaned in ('', 'false', '0', 'no', 'n'):
+                    return False
+                if cleaned in ('true', '1', 'yes', 'y'):
+                    return True
+            raise ValueError(
+                f"Column 'trim' must contain boolean-like values (True/False). Found value {value!r} in row {idx}."
+            )
+
+        samples['trim'] = [_coerce_trim(val, idx) for idx, val in enumerate(samples['trim'])]
+
+    trim_enabled_mask = samples['trim'].astype(bool)
+
+    missing_adapter_columns = [col for col in ('adapter_5', 'adapter_3') if col not in samples.columns]
+    if missing_adapter_columns:
+        if trim_enabled_mask.any():
+            missing = "', '".join(missing_adapter_columns)
+            raise ValueError(
+                f"Missing required column(s) '{missing}' needed when 'trim' is True for any sample."
+            )
+        for col in missing_adapter_columns:
+            samples[col] = [None] * len(samples)
+
+    for i, row in samples.iterrows():
+        if not row['trim']:
+            continue
+
+        adapter_5 = row['adapter_5']
+        adapter_3 = row['adapter_3']
+
+        if not isinstance(adapter_5, str) or adapter_5.strip() == '':
+            raise ValueError(
+                f"Sample '{row['sample_name']}' has trim=True but column 'adapter_5' is missing or empty."
+            )
+        if not isinstance(adapter_3, str) or adapter_3.strip() == '':
+            raise ValueError(
+                f"Sample '{row['sample_name']}' has trim=True but column 'adapter_3' is missing or empty."
+            )
+
+        samples.loc[i, 'adapter_5'] = adapter_5.strip()
+        samples.loc[i, 'adapter_3'] = adapter_3.strip()
+
 
     # check if non_parental_freq is specified - otherwise fill with default
     if 'non_parental_freq' not in samples.columns:
@@ -312,5 +365,14 @@ def get_samples(config):
         
     # do checks
     samples = check_data(samples)
+
+    # If samples were provided via command-line config (not from a samples CSV)
+    # and the user did not explicitly supply trimming settings, don't add the
+    # auxiliary trimming/adapter columns to the returned DataFrame. Tests and
+    # downstream code expect these columns only when explicitly present.
+    if 'samples' not in config and 'trim' not in config:
+        for col in ('trim', 'adapter_5', 'adapter_3'):
+            if col in samples.columns:
+                samples = samples.drop(columns=[col])
 
     return(samples)
