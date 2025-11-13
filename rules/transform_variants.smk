@@ -234,7 +234,7 @@ rule dmat:
         seq_type = "nt-seq|aa-seq"
     params:
         distance_metric = lambda wildcards: "identity" if wildcards.seq_type == "nt-seq" else "blosum62",
-        max_seqs = MAX_SEQS
+        max_seqs = config.get("max_seqs", MAX_SEQS)
     shell:
         """
         python3 -m aavolve.distance_matrix \
