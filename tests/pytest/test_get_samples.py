@@ -6,10 +6,19 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from aavolve.get_samples import (PARENTDIR, DEFAULT_MINREPS, DEFAULT_FREQ, 
-                                 DEFAULT_INCLUDE_NON, DEFAULT_GROUP_VARS,
-                                 REQUIRED_COLUMNS, SEQ_TECHS, DEFAULT_GROUP_VARS_DIST,
-                                 DEFAULT_MAX_GROUP_DISTANCE, DEFAULT_TRIM)
+from aavolve.get_samples import (
+    PARENTDIR,
+    DEFAULT_MINREPS,
+    DEFAULT_FREQ,
+    DEFAULT_INCLUDE_NON,
+    DEFAULT_GROUP_VARS,
+    DEFAULT_TRIM,
+    DEFAULT_GROUP_VARS_DIST,
+    DEFAULT_MAX_GROUP_DISTANCE,
+    REQUIRED_COLUMNS,
+    SEQ_TECHS,
+    DEFAULT_ANCHORS,
+)
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
 
@@ -153,6 +162,18 @@ class TestGetCommandOptions:
         if 'reference_file' not in config:
             os.remove(expected_config['reference_file'])
 
+    def test_get_command_options_with_anchors(self, config):
+        cfg = dict(config)
+        cfg['anchors'] = 12
+        samples = get_command_options(cfg)
+        assert samples['anchors'][0] == 12
+
+    def test_get_command_options_with_achors(self, config):
+        cfg = dict(config)
+        cfg['achors'] = 9
+        samples = get_command_options(cfg)
+        assert samples['anchors'][0] == 9
+
 class TestCheckData:
     
     def test_check_data(self, sample_df):
@@ -162,6 +183,39 @@ class TestCheckData:
 
         # should not raise
         check_data(sample_df)
+
+    def test_check_data_with_anchors(self, sample_df):
+        sample_df['anchors'] = [5]
+        sample_df = check_data(sample_df)
+        assert sample_df['anchors'][0] == 5
+
+    def test_check_data_with_achors_column(self, sample_df):
+        sample_df['achors'] = [7]
+        sample_df = check_data(sample_df)
+        assert 'anchors' in sample_df.columns
+        assert 'achors' not in sample_df.columns
+        assert sample_df['anchors'][0] == 7
+
+    def test_check_data_invalid_anchor_type(self, sample_df):
+        sample_df['anchors'] = ['five']
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert "Column 'anchors' must contain positive integers" in str(error.value)
+
+    def test_check_data_invalid_anchor_value(self, sample_df):
+        sample_df['anchors'] = [-2]
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert "Column 'anchors' must contain positive integers" in str(error.value)
+
+    def test_check_data_anchor_parent_consistency(self, sample_df):
+        sample_df = pd.concat([sample_df, sample_df.copy()], ignore_index=True)
+        sample_df.loc[1, 'sample_name'] = 'sample2'
+        sample_df.loc[0, 'anchors'] = 5
+        sample_df.loc[1, 'anchors'] = 7
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+        assert "same anchor length" in str(error.value)
 
     @pytest.mark.parametrize("col", REQUIRED_COLUMNS)
     def test_check_data_missing_column(self, sample_df, col):
@@ -751,6 +805,7 @@ class TestGetSamples:
         expected_samples['group_vars'] = DEFAULT_GROUP_VARS
         expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
         expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
+        expected_samples['anchors'] = DEFAULT_ANCHORS
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -782,6 +837,7 @@ class TestGetSamples:
             expected_samples['group_vars'] = DEFAULT_GROUP_VARS
             expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
             expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
+            expected_samples['anchors'] = DEFAULT_ANCHORS
 
             # pass in both file and config
             config['samples'] = f.name

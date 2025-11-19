@@ -1,9 +1,22 @@
+import re
+
 from aavolve.get_samples import get_samples
+from aavolve.utils import normalize_names
+
 
 samples = get_samples(config)
 
+sample_names = normalize_names(samples.sample_name)
+parent_names = normalize_names(samples.parent_name)
+all_names = sorted(set(sample_names) | set(parent_names))
+if not all_names:
+    raise ValueError("No sample or parent names available to constrain the 'sample' wildcard")
+
+sample_name_pattern = "|".join(re.escape(name) for name in all_names)
+
 wildcard_constraints:
-    sample_name = '|'.join(samples.sample_name) + "|" + "|".join(samples.parent_name)
+    sample=sample_name_pattern,
+    anchor_suffix="\.fastq(\.gz)?|\.fasta(\.gz)?",
 
 # target files for RCA consensus
 consensus = list()

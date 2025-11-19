@@ -22,6 +22,98 @@ def is_fastq(file):
     return any((file.endswith('.fastq'), file.endswith('.fastq.gz'), file.endswith('.fq'), file.endswith('.fq.gz')))
 
 
+def get_anchor_length(wildcards, samples):
+    """Return anchor length configured for the sample/parent."""
+
+    column = 'anchors'
+    if column not in samples.columns:
+        return 0
+
+    if wildcards.sample in set(samples.sample_name):
+        value = get_column_by_sample(wildcards, samples, column)
+    elif wildcards.sample in set(samples.parent_name):
+        value = get_column_by_parent(wildcards, samples, column)
+    else:
+        raise ValueError(f"Sample {wildcards.sample} not found in samples DataFrame")
+
+    if value is None:
+        return 0
+
+    if isinstance(value, (float, np.floating)) and np.isnan(value):  # type: ignore[arg-type]
+        return 0
+
+    if isinstance(value, bool):
+        raise ValueError(
+            f"Anchor length must be a non-negative integer. Found boolean {value} for sample {wildcards.sample}"
+        )
+
+    try:
+        length = int(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(
+            f"Anchor length must be a non-negative integer. Found value {value!r} for sample {wildcards.sample}"
+        ) from err
+
+    if length < 0:
+        raise ValueError(f"Anchor length must be non-negative. Found {length} for sample {wildcards.sample}")
+
+    return length
+
+
+def anchors_enabled(wildcards, samples):
+    return get_anchor_length(wildcards, samples) > 0
+
+
+def get_anchor_sequences_path(wildcards):
+    return f"out/anchors/{wildcards.sample}.fasta"
+
+
+def get_reads_for_anchor_input(wildcards, samples):
+    if wildcards.sample in set(samples.parent_name):
+        return get_reads(wildcards, samples)
+    if trim_is_enabled(wildcards, samples):
+        return f"out/trimmed/{wildcards.sample}.trimmed.gz"
+    return get_reads(wildcards, samples)
+
+
+def get_anchor_reads_suffix(wildcards, samples):
+    base_reads = get_reads(wildcards, samples)
+
+    if wildcards.sample in set(samples.parent_name):
+        return '.fasta.gz' if base_reads.endswith('.gz') else '.fasta'
+
+    if trim_is_enabled(wildcards, samples):
+        return '.fastq.gz'
+
+    if is_fastq(base_reads):
+        return '.fastq.gz' if base_reads.endswith('.gz') else '.fastq'
+
+    return '.fasta.gz' if base_reads.endswith('.gz') else '.fasta'
+
+
+def get_anchored_reads_path(wildcards, samples):
+    suffix = get_anchor_reads_suffix(wildcards, samples)
+    return f"out/anchors/reads/{wildcards.sample}{suffix}"
+
+
+def get_anchored_reference_path(wildcards):
+    return f"out/anchors/references/{wildcards.sample}.fasta"
+
+
+def _get_reference_base(wildcards, samples):
+    if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
+        raise ValueError(f"Sample {wildcards.sample} not found")
+
+    parents = {}
+    for k, v in zip(samples['parent_name'], samples['reference_file']):
+        parents[k] = v
+
+    if wildcards.sample in parents.keys():
+        return parents[wildcards.sample]
+
+    return get_column_by_sample(wildcards, samples, 'reference_file')
+
+
 def minimap2_params_with_default(wildcards, samples):
     default = "-x map-hifi -B 1.5 --end-bonus 5"
     if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
@@ -95,25 +187,18 @@ def get_reads(wildcards, samples):
     return get_column_by_sample(wildcards, samples, 'read_file')
 
 def get_reference(wildcards, samples):
-    """
-    Get appropriate reference for wildcards.sample
-    Either parental references,
-    or just the reference otherwise
-    """
-    if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
-        raise ValueError(f"Sample {wildcards.sample} not found")
+    """Return the raw reference path (without anchors)."""
 
-    # make a dictionary of parents
-    parents = {}
-    for k, v in zip(samples['parent_name'], samples['reference_file']):
-        parents[k] = v
-    
-    # if one of the parents, return parent sequences
-    if wildcards.sample in parents.keys():
-        return parents[wildcards.sample]
-    
-    # otherwise, just return reference
-    return get_column_by_sample(wildcards, samples, 'reference_file')
+    return _get_reference_base(wildcards, samples)
+
+
+def get_reference_for_align(wildcards, samples):
+    """Return reference path to use during alignment and variant extraction."""
+
+    if anchors_enabled(wildcards, samples):
+        return get_anchored_reference_path(wildcards)
+
+    return _get_reference_base(wildcards, samples)
 
 
 def trim_is_enabled(wildcards, samples):
@@ -139,6 +224,9 @@ def trim_is_enabled(wildcards, samples):
 
 def get_reads_for_align(wildcards, samples):
     """Return the appropriate input for minimap2 alignment, considering trimming."""
+
+    if anchors_enabled(wildcards, samples):
+        return get_anchored_reads_path(wildcards, samples)
 
     reads = get_reads(wildcards, samples)
 

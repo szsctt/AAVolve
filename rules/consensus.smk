@@ -1,3 +1,5 @@
+import os
+
 from aavolve.snakemake_helpers import get_column_by_sample
 
 rule consensus:
@@ -8,6 +10,8 @@ rule consensus:
        consensus_reads = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
    params:
        dir = lambda wildcards, output: os.path.dirname(os.path.dirname(output.consensus_reads)) + '/'
+   log:
+       "logs/consensus/{sample}.log"
    container: "docker://szsctt/lr_c3poa"
    threads: 8
    shell:
@@ -36,6 +40,8 @@ rule filter_consensus:
         filt = "out/c3poa_filt/{sample}.fasta.gz"
     params:
         n_filt = lambda wildcards: int(get_column_by_sample(wildcards, samples, "min_reps"))
+    log:
+        "logs/filter_consensus/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -47,6 +53,8 @@ rule count_repeats:
         fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
     output:
         counts = "out/c3poa/{sample}/repeat_counts.tsv"
+    log:
+        "logs/count_repeats/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """

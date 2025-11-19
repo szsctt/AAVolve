@@ -61,7 +61,7 @@ snakemake --use-singularity --cores 1 --config read_file=<path to fastq> parent_
 For more than one sample, specify parameters and inputs in a comma-sepearated file with one row per sample (fastq file), and the following columns:
 
 
-sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file,splint_file,non_parental_freq,trim,adapter_5,adapter_3
+sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,reference_file,splint_file,non_parental_freq,trim,adapter_5,adapter_3,anchors
 
 - `sample_name`: A name for the sample
 - `parent_name` (optional): A name for the parents of the sample
@@ -82,6 +82,7 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `trim` (optional): Set to `True` to enable adapter trimming for a sample. If enabled, both `adapter_5` and `adapter_3` must be provided. Trimming is never performed for parent samples. (default: False)
 - `adapter_5` (required if `trim` is `True`): The 5' adapter sequence for trimming.
 - `adapter_3` (required if `trim` is `True`): The 3' adapter sequence for trimming.
+- `anchors` (optional): Positive integer specifying the length of random 5' and 3' anchors to prepend/append to both reads and references prior to alignment. Omit or set to 0 to disable anchoring (default: 0).
 
 
 To provide this file to `snakemake`:
@@ -94,6 +95,10 @@ snakemake --use-apptainer --cores 1 --config samples=<path to csv>
 
 C3POa often leaves pieces of the splint sequence at the ends of the consensus reads. Use trimming to remove these - it's useful to first run without trimming and do a multiple sequence alignment of the highest-count sequences with some of the parents to identify the adapter sequences to trim.
 
+#### Anchors
+
+Short random anchors can stabilise alignments for highly similar parental sequences. When `anchors` is set to a positive integer, AAVolve generates reproducible 5' and 3' anchor sequences of the specified length (stored in `out/anchors/{sample}.fasta`) and applies them to both the reads and the reference prior to alignment. Variant positions are reported relative to the original (unanchored) reference coordinates, and anchored FASTA/FASTQ files are written to `out/anchors/reads/` and `out/anchors/references/`.
+
 
 ## Outputs
 
@@ -103,6 +108,8 @@ AAVolve produces several outputs, which will appear in the `out` folder and may 
 
 - Summary of results: `out/qc/<sample_name>_report.html`
 - Number of reads at each stage of processing: `out/qc/<sample_name>_read-counts.tsv`
+- Generated anchor sequences: `out/anchors/<sample_name>.fasta`
+- Anchored reads and references used for alignment (when anchors enabled): `out/anchors/reads/<sample_name>.*`, `out/anchors/references/<sample_name>.fasta`
 
 #### Unique sequences
 

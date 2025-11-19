@@ -1,3 +1,5 @@
+import os
+
 from aavolve.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
 from aavolve.utils import MAX_SEQS
 
@@ -24,6 +26,8 @@ rule variant_frequency:
         high_freq = lambda wildcards, output: f"-o {output.high_freq}",
         all= lambda wildcards, output: f"-oa {output.all}",
         parents_out = lambda wildcards, output: f"-op {output.parental}"
+    log:
+        "logs/variant_frequency/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -44,6 +48,8 @@ rule combine_variants:
     params:
         include_non_parental = lambda wildcards: get_column_by_sample(wildcards, samples, "include_non_parental"),
         combined_unzip = lambda wildcards, output: os.path.splitext(output.combined)[0]
+    log:
+        "logs/combine_variants/{sample}.log"
     shell:
         """
         # cat files together but removed header from second file
@@ -69,6 +75,8 @@ rule pivot:
         group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_vars") else '',
         group_dist = lambda wildcards: f'--group-dist {get_column_by_sample(wildcards, samples, "group_vars_dist")}' if get_column_by_sample(wildcards, samples, "group_vars_dist") else '',
         max_group_distance = lambda wildcards: '--max-distance-frac 0' if not get_column_by_sample(wildcards, samples, "group_vars") else f'--max-distance-frac {get_column_by_sample(wildcards, samples, "max_group_distance")}',
+    log:
+        "logs/pivot/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -90,6 +98,8 @@ rule assign_parents:
         assigned = "out/parents/assigned/{sample}_assigned-parents.tsv.gz"
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
+    log:
+        "logs/assign_parents/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -106,6 +116,8 @@ rule parent_freq:
         freqs = "out/parents/freqs/{sample}_assigned-parents_freq.tsv.gz"
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
+    log:
+        "logs/parent_freq/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -123,6 +135,8 @@ rule ident_breakpoints:
         breakpoints = "out/parents/breaks/{sample}.tsv.gz",
         break_per_read = "out/parents/breaks/{sample}-perread.tsv.gz",
         break_per_var = "out/parents/breaks/{sample}-pervar.tsv.gz"
+    log:
+        "logs/ident_breakpoints/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -141,6 +155,8 @@ rule distinct_reads:
     output:
         counts = "out/parents/counts/{sample}_parent-counts.tsv.gz",
         members = "out/parents/counts/{sample}_parent-counts-members.tsv.gz"
+    log:
+        "logs/distinct_reads/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -162,6 +178,8 @@ rule apply_variants:
     params:
         group_variants = lambda wildcards: '--group-vars' if get_column_by_sample(wildcards, samples, "group_vars") else '',
         group_dist = lambda wildcards: f'--group-dist {get_column_by_sample(wildcards, samples, "group_vars_dist")}' if get_column_by_sample(wildcards, samples, "group_vars_dist") else '',
+    log:
+        "logs/apply_variants/{sample}.log"
     shell:
         """
         python3 -m aavolve.apply_variants \
@@ -178,6 +196,8 @@ rule translate_nt:
         counts = rules.apply_variants.output.seqs
     output:
         counts = temp("out/corrected/counts/{sample}_aa-seq-translated.tsv.gz")
+    log:
+        "logs/translate_nt/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -195,6 +215,8 @@ rule sum_nt_translated_counts:
     container: "docker://szsctt/lr_pybio:py310"
     params:
         cat = lambda wildcards, input: 'zcat' if input.counts.endswith('.gz') else 'cat'
+    log:
+        "logs/sum_nt_translated_counts/{sample}.log"
     shell:
         """
         # write header
@@ -224,6 +246,8 @@ rule dmat:
     params:
         distance_metric = lambda wildcards: "identity" if wildcards.seq_type == "nt-seq" else "blosum62",
         max_seqs = config.get("max_seqs", MAX_SEQS)
+    log:
+        "logs/dmat/{sample}_{subset}_{seq_type}.log"
     shell:
         """
         python3 -m aavolve.distance_matrix \
@@ -251,6 +275,8 @@ rule count_reads:
         variants = lambda wildcards, input: f"--variant-read-ids {input.variants}",
         pivoted = lambda wildcards, input: f"--pivoted-tsv-files {input.pivoted}",
         distinct = lambda wildcards, input: f"--distinct-read-counts-files {input.distinct} {input.distinct_aa}",
+    log:
+        "logs/count_reads/{sample}.log"
     shell:
         """
         python3 -m aavolve.count_reads \
@@ -273,6 +299,8 @@ rule report:
     output:
         report = "out/qc/{sample}_report.html",
         tmp_notebook = "out/qc/{sample}_report.ipynb",
+    log:
+        "logs/report/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     params:
         seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),

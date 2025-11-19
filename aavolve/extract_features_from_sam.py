@@ -46,10 +46,30 @@ def main(sys_args):
 
   args = parse_args(sys_args)
 
-  get_all_variants(args.i, args.r, args.o, args.O, args.must_start_before, args.must_end_after, args.smaller_output, args.aa_change_in_isolation)
+  get_all_variants(
+      args.i,
+      args.r,
+      args.o,
+      args.O,
+      args.must_start_before,
+      args.must_end_after,
+      args.smaller_output,
+      args.aa_change_in_isolation,
+      args.anchor_length,
+  )
   
 
-def get_all_variants(samfile, reffile, outfile, read_outfile, must_start_before, must_end_after, smaller_output, aa_isolation):
+def get_all_variants(
+  samfile,
+  reffile,
+  outfile,
+  read_outfile,
+  must_start_before,
+  must_end_after,
+  smaller_output,
+  aa_isolation,
+  anchor_length=0,
+):
 
   # check that index exists for samfile
   check_index_exists(samfile)
@@ -61,17 +81,23 @@ def get_all_variants(samfile, reffile, outfile, read_outfile, must_start_before,
   if read_outfile is None:
     read_outfile = os.devnull
   with use_open(outfile, "wt") as out, use_open(read_outfile, "wt") as read_out:
-    
+
     # write header
     write_header(out, smaller_output)
 
     # get variants for each read
-    for read_id, var in get_variants(samfile, ref_seqs, must_start_before,
-                                   must_end_after, aa_isolation):
-        
-        # write variants to file
-        write_variant(read_id, var, ref_names, out, smaller_output)
-        read_out.write(read_id + "\n")
+    for read_id, var in get_variants(
+      samfile,
+      ref_seqs,
+      must_start_before,
+      must_end_after,
+      aa_isolation,
+      anchor_length,
+    ):
+
+      # write variants to file
+      write_variant(read_id, var, ref_names, out, smaller_output)
+      read_out.write(read_id + "\n")
 
 def parse_args(argv):
 
@@ -89,6 +115,7 @@ def parse_args(argv):
                            "(-1 means end of reference)")
   parser.add_argument('-S', "--smaller-output", action="store_true", help="Output fewer columns")
   parser.add_argument('-I', "--aa-change-in-isolation", action="store_true", help="If set, substitutions are evaluated for amino acid changes in isolation, rather than in the context of the codon")
+  parser.add_argument('--anchor-length', type=int, default=0, help="Length of anchors added to the reference and reads (default: 0)")
   args = parser.parse_args(argv)
 
   return args
@@ -125,16 +152,12 @@ def count_total_reads(pysam_handle):
 
     return total
 
-def get_variants(samfile, ref_seqs, start, end, aa_isolation):
+def get_variants(samfile, ref_seqs, start, end, aa_isolation, anchor_length=0):
 
   # open samfile
   reads = pysam.AlignmentFile(samfile)
-  
-  # get length of references
-  if end == -1:
-    refs = reads.lengths
-  else:
-    check_end = end
+
+  reference_lengths = reads.lengths
     
   discarded = 0
   started_aln = False
@@ -156,14 +179,17 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
       continue
   
     # check that read covers at least from 'start' position in reference onwards:
-    if start < read.reference_start:
+    start_with_anchor = start + anchor_length
+    if start_with_anchor < read.reference_start:
       discarded += 1
       continue
     
     # check that read covers at least to 'end' position in reference
     if end == -1:
-      check_end = refs[read.reference_id]  
-    
+      check_end = reference_lengths[read.reference_id]
+    else:
+      check_end = end + anchor_length
+
     if read.reference_end < check_end:
       discarded += 1
       continue
@@ -200,8 +226,21 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
           query_bases = get_query_base(read, qpos)
           assert query_bases.upper() != rseq.upper()
 
+          adj_rpos = rpos - anchor_length
+          adj_qpos = qpos - anchor_length
+          if adj_rpos < 0 or adj_qpos < 0:
+            continue
+
           try:
-            changes_aa = identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation)
+            changes_aa = identify_aa_change(
+                read,
+                ref_seqs,
+                qpos,
+                rpos,
+                offset,
+                aa_isolation,
+                anchor_length,
+            )
           except Exception as e:
             print(f"Error in identify_aa_change for read {read.query_name}: {e}")
             print(f"  qpos: {qpos}, rpos: {rpos}, offset: {offset}")
@@ -212,9 +251,13 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
             print(f"  reference_length: {len(ref_seqs[read.reference_name])}")
             print(f"  query_length: {len(read.query_sequence)}")
             raise 
-            
-          sub = Substitution(rpos = rpos, rseq = rseq, 
-                              qseq = query_bases, changes_aa=changes_aa)
+          
+          sub = Substitution(
+              rpos=adj_rpos,
+              rseq=rseq,
+              qseq=query_bases,
+              changes_aa=changes_aa,
+          )
         
           read_vars.append(sub)
         
@@ -222,16 +265,20 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
       if qpos is None:
       
         # if no variants, add a new one
+        adj_rpos = rpos - anchor_length
+        if adj_rpos < 0:
+          continue
+
         if len(read_vars) == 0:
-          read_vars.append(Deletion(rpos, last_qpos, rseq))
+          read_vars.append(Deletion(adj_rpos, last_qpos, rseq))
         
         # if the last mutation was not a deletion, add a new one
         elif read_vars[-1].var_type != "del":
-          read_vars.append(Deletion(rpos, last_qpos, rseq))
+          read_vars.append(Deletion(adj_rpos, last_qpos, rseq))
           
         # if the last mutation was not the same deletion, add a new one
         elif read_vars[-1].last_qpos != last_qpos:
-          read_vars.append(Deletion(rpos, last_qpos, rseq))
+          read_vars.append(Deletion(adj_rpos, last_qpos, rseq))
           
         # otherwise, update current deletion
         else:
@@ -246,16 +293,20 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
         qbase = get_query_base(read, qpos)
         
         # if no other variants, add new insertion
+        adj_last_rpos = last_rpos - anchor_length
+        if adj_last_rpos < 0:
+          continue
+
         if len(read_vars) == 0:
-          read_vars.append(Insertion(last_rpos, qpos, qbase))
+          read_vars.append(Insertion(adj_last_rpos, qpos, qbase))
           
         # if last mutation wasn't an insertion, add new insertion   
         elif read_vars[-1].var_type != "ins":
-          read_vars.append(Insertion(last_rpos, qpos, qbase))
+          read_vars.append(Insertion(adj_last_rpos, qpos, qbase))
         
         # if last insertion wasn't the same as this one, add new insertion
-        elif read_vars[-1].last_rpos != last_rpos:
-          read_vars.append(Insertion(last_rpos, qpos, qbase))
+        elif read_vars[-1].last_rpos != adj_last_rpos:
+          read_vars.append(Insertion(adj_last_rpos, qpos, qbase))
         
         # otherwise, append to insertion
         else:
@@ -274,7 +325,7 @@ def get_variants(samfile, ref_seqs, start, end, aa_isolation):
     yield read.query_name, read_vars
   print(f"Discarded {discarded} reads")
 
-def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
+def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation, anchor_length=0):
     """
     Identify variants that result in changes to amino acids
 
@@ -286,24 +337,31 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
     that cause the read to be shifted relative to the reference
     """
 
-    # get reference codon - asume first codon starts at posiiton 0 in reference
-    rcodon_start = rpos // 3 * 3
+    effective_rpos = rpos - anchor_length
+    effective_qpos = qpos - anchor_length
+
+    if effective_rpos < 0 or effective_qpos < 0:
+        return False
+
+    rcodon_start = (effective_rpos // 3) * 3
     rcodon_end = rcodon_start + 3
-    
-    
-    rcodon = str(ref_seqs[read.reference_name][rcodon_start:rcodon_end].seq)
+
+    anchor_rcodon_start = rcodon_start + anchor_length
+    anchor_rcodon_end = anchor_rcodon_start + 3
+
+    rcodon = str(ref_seqs[read.reference_name][anchor_rcodon_start:anchor_rcodon_end].seq)
     assert len(rcodon) == 3
 
 
     if aa_isolation:
       # subtitute query base for reference base
-      pos = rpos  % 3
+      pos = effective_rpos % 3
       qcodon = rcodon[:pos] + read.query_sequence[qpos] + rcodon[pos + 1:]
 
     else:
 
       # get query codon
-      qcodon_start = (qpos - offset) // 3 * 3 + offset
+      qcodon_start = (effective_qpos - offset) // 3 * 3 + offset
       qcodon_end = qcodon_start + 3
       
       # if alignment starts part-way though a codon, qcodon_start may be negative
@@ -312,10 +370,13 @@ def identify_aa_change(read, ref_seqs, qpos, rpos, offset, aa_isolation):
         return True
 
       # variant may be in last, incomplete codon, in which case we assume it changes the amino acid
-      if qcodon_end > len(read.query_sequence):
+      anchor_qcodon_start = qcodon_start + anchor_length
+      anchor_qcodon_end = anchor_qcodon_start + 3
+
+      if anchor_qcodon_end > len(read.query_sequence):
         return True
 
-      qcodon = read.query_sequence[qcodon_start:qcodon_end]
+      qcodon = read.query_sequence[anchor_qcodon_start:anchor_qcodon_end]
       assert len(qcodon) == 3
     
     # compare amino acids

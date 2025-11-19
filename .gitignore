@@ -3,6 +3,7 @@
 out
 data
 config
+logs/
 .snakemake
 .cache
 .ipython

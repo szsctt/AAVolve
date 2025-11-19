@@ -3,6 +3,8 @@ import sys
 
 import pytest
 import pysam
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 from aavolve.extract_features_from_sam import (
     parse_args, get_reference_names, count_total_reads, check_index_exists,
@@ -38,20 +40,28 @@ def test_parse_args_2():
     assert args.must_start_before == 0
     assert args.must_end_after == -1
     assert args.smaller_output == False
+    assert args.anchor_length == 0
 
 def test_parse_args_3():
     """
     Test parse_args with arguments
     """
-    args = parse_args(["-i", "test.sam", "-r", "test.fasta", "-o", "test.tsv",
-                       "--must-start-before", "1", "--must-end-after", "2",
-                       "--smaller-output"])
+    args = parse_args([
+        "-i", "test.sam",
+        "-r", "test.fasta",
+        "-o", "test.tsv",
+        "--must-start-before", "1",
+        "--must-end-after", "2",
+        "--smaller-output",
+        "--anchor-length", "7",
+    ])
     assert args.i == "test.sam"
     assert args.r == "test.fasta"
     assert args.o == "test.tsv"
     assert args.must_start_before == 1
     assert args.must_end_after == 2
     assert args.smaller_output == True
+    assert args.anchor_length == 7
 
 ## Test check_index_exists
 @pytest.mark.parametrize("samfile", ['samfile_aav2', 'samfile_pb', 'samfile_pb_sup_sec'], indirect=True)
@@ -268,6 +278,50 @@ def test_get_variants_subs(samfile_aav2_subs, aav2_ref, start, end, aa_isolation
                 import pdb; pdb.set_trace()
             
 
+def test_get_variants_anchor_offset(tmp_path):
+
+    anchor_length = 3
+    five_prime = "GAT"
+    three_prime = "TTT"
+    core_reference = "AAAAAA"
+
+    anchored_reference = five_prime + core_reference + three_prime
+    ref_dict = {"ref": SeqRecord(Seq(anchored_reference), id="ref")}
+
+    bam_path = tmp_path / "anchor_adjusted.bam"
+    header = {"HD": {"VN": "1.0"}, "SQ": [{"LN": len(anchored_reference), "SN": "ref"}]}
+
+    with pysam.AlignmentFile(bam_path, "wb", header=header) as bam_file:
+        segment = pysam.AlignedSegment(header=bam_file.header)
+        segment.query_name = "read_with_anchor"
+        segment.query_sequence = five_prime + "AACAAA" + three_prime
+        segment.flag = 0
+        segment.reference_id = 0
+        segment.reference_start = 0
+        segment.mapping_quality = 60
+        segment.cigar = [(0, len(segment.query_sequence))]
+        segment.query_qualities = pysam.qualitystring_to_array("I" * len(segment.query_sequence))
+        segment.set_tag("MD", "5A6")
+        bam_file.write(segment)
+
+    pysam.index(str(bam_path))
+
+    variants = list(
+        get_variants(
+            str(bam_path),
+            ref_dict,
+            start=0,
+            end=-1,
+            aa_isolation=False,
+            anchor_length=anchor_length,
+        )
+    )
+
+    assert len(variants) == 1
+    read_id, read_variants = variants[0]
+    assert read_id == "read_with_anchor"
+    assert [str(var) for var in read_variants] == ["A3C"]
+
 ## Test identify_aa_change
 
 @pytest.fixture
@@ -405,8 +459,17 @@ def test_write_variant_sub(smaller):
 def test_get_all_variants(samfile, reffile, resultfile, start_before, end_after, aa_isolation, smaller_output):
 
     with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
-        
-        get_all_variants(samfile, reffile, outfile.name, outfile2.name, start_before, end_after, smaller_output, aa_isolation)
+        get_all_variants(
+            samfile,
+            reffile,
+            outfile.name,
+            outfile2.name,
+            start_before,
+            end_after,
+            smaller_output,
+            aa_isolation,
+            anchor_length=0,
+        )
 
         # read results
         outfile.seek(0), outfile2.seek(0)
@@ -449,8 +512,17 @@ def test_get_all_variants_reads_match_reference(samfile, reffile):
     """
     
     with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
-        
-        get_all_variants(samfile, reffile, outfile.name, outfile2.name, 0, -1, False, False)
+        get_all_variants(
+            samfile,
+            reffile,
+            outfile.name,
+            outfile2.name,
+            0,
+            -1,
+            False,
+            False,
+            anchor_length=0,
+        )
 
         # read results
         outfile.seek(0), outfile2.seek(0)
@@ -467,8 +539,17 @@ def test_get_all_variants_difficult(difficult_samfile, aav2n496d_ref_file):
     """
     
     with tempfile.NamedTemporaryFile(mode='w+t') as outfile, tempfile.NamedTemporaryFile(mode='w+t') as outfile2:
-        
-        get_all_variants(difficult_samfile, aav2n496d_ref_file, outfile.name, outfile2.name, 40, 2202, False, False)
+        get_all_variants(
+            difficult_samfile,
+            aav2n496d_ref_file,
+            outfile.name,
+            outfile2.name,
+            40,
+            2202,
+            False,
+            False,
+            anchor_length=0,
+        )
 
         # read results
         outfile.seek(0), outfile2.seek(0)

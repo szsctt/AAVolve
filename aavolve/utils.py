@@ -1,26 +1,54 @@
-import gzip
 import csv
+import gzip
+import math
 import os
 
 MAX_SEQS = 1000
 
 def use_open(filename, *args, **kwargs):
-    """
-    Use gzip.open if file is gzipped
-    """
-    
-    # file extension is .gz, assume should be opened with gzip
-    if filename.endswith('.gz'):
+  """Return a handle that transparently reads compressed files."""
+
+  filename = str(filename)
+
+  args_list = list(args)
+  mode = kwargs.get("mode")
+  if args_list:
+    mode = args_list[0]
+  mode = mode or "rt"
+
+  # For read modes, inspect magic bytes to determine compression.
+  if "r" in mode and os.path.isfile(filename):
+    try:
+      with open(filename, "rb") as probe:
+        magic = probe.read(2)
+    except OSError:
+      magic = b""
+    if magic == b"\x1f\x8b":
       return gzip.open(filename, *args, **kwargs)
-    # if file exists, check first two bytes to see if it's gzipped
-    elif os.path.isfile(filename):
-      with open(filename, 'rb') as f:
-        magic = f.read(2)
-      if magic == b'\x1f\x8b':
-        return gzip.open(filename, *args, **kwargs)
-    
-    # assume non-gzipped file
     return open(filename, *args, **kwargs)
+
+  # For write/append modes fall back to extension-based choice so callers
+  # continue to get compressed outputs when targeting .gz paths.
+  if any(flag in mode for flag in ("w", "a", "x")) and filename.endswith(".gz"):
+    return gzip.open(filename, *args, **kwargs)
+
+  return open(filename, *args, **kwargs)
+
+
+def normalize_names(values):
+  """Return sorted unique string identifiers, omitting null-like entries."""
+
+  unique = set()
+  for value in values:
+    if value is None:
+      continue
+    if isinstance(value, float) and math.isnan(value):
+      continue
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+      continue
+    unique.add(text)
+  return sorted(unique)
     
 def get_repeats_from_r2c2_name(name):
 
