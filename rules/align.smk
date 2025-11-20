@@ -1,6 +1,7 @@
 from aavolve.snakemake_helpers import (
     get_anchor_length,
     get_anchor_reads_suffix,
+    get_anchor_seed,
     get_linked_adapters_for_sample,
     get_reads,
     get_reads_for_align,
@@ -16,7 +17,7 @@ rule generate_anchor_sequences:
         anchors="out/anchors/{sample}.fasta"
     params:
         length=lambda wildcards: get_anchor_length(wildcards, samples),
-        seed=lambda wildcards: wildcards.sample
+        seed=lambda wildcards: get_anchor_seed(wildcards, samples)
     log:
         "logs/generate_anchor_sequences/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"

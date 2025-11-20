@@ -60,6 +60,31 @@ def get_anchor_length(wildcards, samples):
     return length
 
 
+def get_anchor_seed(wildcards, samples):
+    """
+    Generate a consistent seed for anchor generation based on parent+reference+anchor_length.
+    Samples with the same parent, reference, and anchor length will share the same anchors.
+    """
+    # Get parent name
+    if wildcards.sample in set(samples.parent_name):
+        parent_name = wildcards.sample
+    else:
+        parent_name = get_column_by_sample(wildcards, samples, 'parent_name')
+    
+    # Get reference name
+    if wildcards.sample in set(samples.parent_name):
+        reference_name = get_column_by_parent(wildcards, samples, 'reference_name')
+    else:
+        reference_name = get_column_by_sample(wildcards, samples, 'reference_name')
+    
+    # Get anchor length
+    anchor_length = get_anchor_length(wildcards, samples)
+    
+    # Create a consistent seed from parent+reference+length
+    seed = f"{parent_name}_{reference_name}_{anchor_length}"
+    return seed
+
+
 def anchors_enabled(wildcards, samples):
     return get_anchor_length(wildcards, samples) > 0
 

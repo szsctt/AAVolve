@@ -7,6 +7,7 @@ from aavolve.snakemake_helpers import (
     fill_parents,
     format_input_reads,
     get_anchor_length,
+    get_anchor_seed,
     get_anchor_sequences_path,
     get_anchored_reads_path,
     get_anchored_reference_path,
@@ -464,4 +465,62 @@ class TestFormatInputReads:
     def test_format_input_reads(self, input, exp):
         
         assert format_input_reads(input) == exp
+
+class TestGetAnchorSeed:
+    """Test that samples with same parent+reference+anchor_length get same seed"""
+
+    def test_same_parent_reference_length_same_seed(self, samples_df):
+        """Samples with identical parent, reference, and anchor length should get identical seeds"""
+        # Create wildcards for two different samples that share parent and reference
+        # From conftest, we have samples with parent_name='aav2389' using reference_name='aav2'
+        wildcards1 = type('obj', (object,), {'sample': 'np-2389-only'})()
+        wildcards2 = type('obj', (object,), {'sample': 'np-2389-filt'})()
+        
+        seed1 = get_anchor_seed(wildcards1, samples_df)
+        seed2 = get_anchor_seed(wildcards2, samples_df)
+        
+        assert seed1 == seed2, f"Expected identical seeds for samples with same parent+reference+length, got {seed1} and {seed2}"
+
+    def test_different_parent_different_seed(self, samples_df):
+        """Samples with different parents should get different seeds"""
+        # np-2389-only uses parent aav2389, np-cc-aav2 uses parent aav2
+        wildcards1 = type('obj', (object,), {'sample': 'np-2389-only'})()
+        wildcards2 = type('obj', (object,), {'sample': 'np-cc-aav2'})()
+        
+        seed1 = get_anchor_seed(wildcards1, samples_df)
+        seed2 = get_anchor_seed(wildcards2, samples_df)
+        
+        assert seed1 != seed2, f"Expected different seeds for different parents, got {seed1} and {seed2}"
+
+    def test_parent_sample_uses_own_name(self, samples_df):
+        """When wildcards.sample is a parent name, it should use that as parent_name"""
+        # 'aav2389' is a parent_name in the samples
+        wildcards = type('obj', (object,), {'sample': 'aav2389'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # Seed should start with the parent name
+        assert seed.startswith('aav2389_'), f"Expected seed to start with parent name 'aav2389_', got {seed}"
+
+    def test_seed_includes_anchor_length(self, samples_df):
+        """Seed should include the anchor length"""
+        wildcards = type('obj', (object,), {'sample': 'np-2389-only'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # np-2389-only has anchor length 20
+        assert seed.endswith('_20'), f"Expected seed to end with '_20', got {seed}"
+
+    def test_seed_format(self, samples_df):
+        """Seed should follow format: parent_reference_anchorlength"""
+        wildcards = type('obj', (object,), {'sample': 'np-2389-only'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # Should be: aav2389_aav2_20
+        parts = seed.split('_')
+        assert len(parts) >= 3, f"Expected seed to have at least 3 parts separated by '_', got {seed}"
+        
+        # Last part should be numeric (anchor length)
+        assert parts[-1].isdigit(), f"Expected last part of seed to be numeric, got {parts[-1]}"
         

@@ -29,6 +29,71 @@ def sample_df(config):
 
     return pd.DataFrame([config])
 
+@pytest.fixture
+def samples_df():
+    """Load a DataFrame with multiple samples for testing functions that need sample context.
+    
+    Creates samples with controlled parent/reference/anchor combinations for testing:
+    - np-2389-only: aav2389 parent, aav2 reference, anchors=20
+    - np-2389-filt: aav2389 parent, aav2 reference, anchors=20 (same as above)
+    - np-cc-aav2: aav2 parent, aav2 reference, anchors=15 (different parent)
+    - np-2389-test-anchors: aav2389 parent, aav2 reference, anchors=20
+    - np-2389-test-trim-anchors: aav2389 parent, aav2 reference, anchors=20, trim=True
+    """
+    # Load the anchors config which has proper anchor values set
+    import os
+    test_dir = os.path.dirname(__file__)
+    config_dir = os.path.join(test_dir, '../data/config')
+    
+    anchors_df = pd.read_csv(os.path.join(config_dir, 'test_anchors.csv'))
+    
+    # Create additional test samples with explicit anchor values
+    extra_samples = pd.DataFrame([
+        {
+            'sample_name': 'np-2389-only',
+            'parent_name': 'aav2389',
+            'reference_name': 'aav2',
+            'seq_tech': 'np',
+            'read_file': 'tests/data/reads/np-2389.fastq',
+            'parent_file': 'tests/data/references/wt2n496d389dna.fasta',
+            'reference_file': 'tests/data/references/wtAAV2.fa',
+            'anchors': 20  # Explicitly set to match other aav2389 samples
+        },
+        {
+            'sample_name': 'np-2389-filt',
+            'parent_name': 'aav2389',
+            'reference_name': 'aav2',
+            'seq_tech': 'np',
+            'read_file': 'tests/data/reads/np-2389.fastq',
+            'parent_file': 'tests/data/references/wt2n496d389dna.fasta',
+            'reference_file': 'tests/data/references/wtAAV2.fa',
+            'anchors': 20  # Same as np-2389-only
+        },
+        {
+            'sample_name': 'np-cc-aav2',
+            'parent_name': 'aav2',
+            'reference_name': 'aav2',
+            'seq_tech': 'np-cc',
+            'read_file': 'tests/data/reads/np-cc-aav2.fastq',
+            'parent_file': 'tests/data/references/wtAAV2.fa',
+            'reference_file': 'tests/data/references/wtAAV2.fa',
+            'splint_file': 'tests/data/references/splint.fa',
+            'anchors': 15  # Different parent should have different or no anchors
+        },
+        {
+            'sample_name': 'aav2389',  # Parent sample itself
+            'parent_name': 'aav2389',
+            'reference_name': 'aav2',
+            'seq_tech': 'np',
+            'read_file': 'tests/data/references/wt2n496d389dna.fasta',
+            'parent_file': 'tests/data/references/wt2n496d389dna.fasta',
+            'reference_file': 'tests/data/references/wtAAV2.fa',
+            'anchors': 20  # Parent should have same anchor value as its samples
+        }
+    ])
+    
+    return pd.concat([anchors_df, extra_samples], ignore_index=True)
+
 #### reference fasta fixtures ####
 
 @pytest.fixture
