@@ -200,13 +200,13 @@ class TestCheckData:
         sample_df['anchors'] = ['five']
         with pytest.raises(ValueError) as error:
             check_data(sample_df)
-        assert "Column 'anchors' must contain positive integers" in str(error.value)
+        assert "Column 'anchors' must contain non-negative integers" in str(error.value)
 
     def test_check_data_invalid_anchor_value(self, sample_df):
         sample_df['anchors'] = [-2]
         with pytest.raises(ValueError) as error:
             check_data(sample_df)
-        assert "Column 'anchors' must contain positive integers" in str(error.value)
+        assert "Column 'anchors' must contain non-negative integers" in str(error.value)
 
     def test_check_data_anchor_parent_consistency(self, sample_df):
         sample_df = pd.concat([sample_df, sample_df.copy()], ignore_index=True)
