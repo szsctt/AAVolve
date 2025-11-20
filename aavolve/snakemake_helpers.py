@@ -55,7 +55,7 @@ def get_anchor_length(wildcards, samples):
         ) from err
 
     if length < 0:
-        raise ValueError(f"Anchor length must be non-negative. Found {length} for sample {wildcards.sample}")
+        raise ValueError(f"Anchor length must be a non-negative integer. Found {length} for sample {wildcards.sample}")
 
     return length
 
