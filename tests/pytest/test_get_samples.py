@@ -168,7 +168,7 @@ class TestGetCommandOptions:
         samples = get_command_options(cfg)
         assert samples['anchors'][0] == 12
 
-    def test_get_command_options_with_achors(self, config):
+    def test_get_command_options_with_anchors(self, config):
         cfg = dict(config)
         cfg['achors'] = 9
         samples = get_command_options(cfg)

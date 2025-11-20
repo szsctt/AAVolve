@@ -275,9 +275,9 @@ def check_data(samples):
             try:
                 int_value = int(value)
             except (TypeError, ValueError):
-                raise ValueError(f"Column 'anchors' must contain positive integers. Found value {value!r} in row {i}")
-            if int_value <= 0:
-                raise ValueError(f"Column 'anchors' must contain positive integers. Found value {value!r} in row {i}")
+                raise ValueError(f"Column 'anchors' must contain non-negative integers. Found value {value!r} in row {i}")
+            if int_value < 0:
+                raise ValueError(f"Column 'anchors' must contain non-negative integers. Found value {value!r} in row {i}")
             samples.loc[i, 'anchors'] = int_value
 
     if len(samples.groupby(['parent_name', 'anchors'])) != len(samples.groupby('parent_name')):
