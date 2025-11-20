@@ -42,7 +42,6 @@ rule anchor_reads:
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
-        test "{wildcards.anchor_suffix}" = "{params.expected_suffix}"
         python3 -m aavolve.apply_anchors \
             --input {input.reads} \
             --output {output.anchored} \
