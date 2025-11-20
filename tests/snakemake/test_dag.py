@@ -518,8 +518,8 @@ def test_align_inputs_no_trimming_no_anchors(tmp_path, snakefile, np_only_config
     sample_name = samples_df.iloc[0]['sample_name']
     
     # Verify no trimming and no anchors
-    assert samples_df.iloc[0]['trim'] == False, "Sample should have trimming disabled"
-    assert samples_df.iloc[0]['anchors'] in [None, '', 0] or pd.isna(samples_df.iloc[0]['anchors']), \
+    assert not samples_df.iloc[0]['trim'], "Sample should have trimming disabled"
+    assert not samples_df.iloc[0]['anchors'] or pd.isna(samples_df.iloc[0]['anchors']), \
         "Sample should have anchors disabled"
     
     with DAGContext(snakefile, {"samples": str(np_only_config)}) as dag_ctx:
