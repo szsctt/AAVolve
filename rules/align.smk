@@ -100,7 +100,6 @@ rule align:
     output:
         aligned = "out/aligned/{sample}.bam",
         idx = "out/aligned/{sample}.bam.bai",
-    conda: "../deps/align/env.yml"
     container: "docker://szsctt/lr_align"
     threads: 8
     params:

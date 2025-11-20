@@ -14,7 +14,6 @@ rule extract_variants_parents:
         ref = lambda wildcards: get_reference_for_align(wildcards, samples)
     output:
         var = "out/variants/parents/{sample}.tsv.gz",
-    conda: "../deps/pybio/env.yml"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
         sample = "|".join(samples.parent_name)
@@ -90,7 +89,6 @@ rule extract_variants_reads:
     output:
         var = "out/variants/reads/{sample}.tsv.gz",
         read_ids = "out/variants/reads/{sample}_read-ids.txt"
-    conda: "../deps/pybio/env.yml"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
