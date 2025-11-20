@@ -37,7 +37,7 @@ def anchors_cc_config() -> Path:
     Provide path to a minimal config CSV for testing anchor-related rules.
     """
     repo_root = Path(__file__).resolve().parents[2]
-    config_path = repo_root / "tests" / "data" / "config" / "test_worklow_cc.csv"
+    config_path = repo_root / "tests" / "data" / "config" / "test_workflow_cc.csv"
     if not config_path.exists():
         raise FileNotFoundError(f"Could not find test config at expected location: {config_path}")
     return config_path
