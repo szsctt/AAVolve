@@ -91,6 +91,11 @@ To provide this file to `snakemake`:
 snakemake --use-apptainer --cores 1 --config samples=<path to csv>
 ```
 
+If you have issues during rendering ipynb notebookes, try adding `--apptainer-args '--cleanenv'`.
+
+Note that if the data is outside of the AAVolve directory, you will also need to add a bind-mount to the apptainer args:
+`--apptainer-args '--cleanenv -B /path/to/data'`
+
 #### Trimming
 
 C3POa often leaves pieces of the splint sequence at the ends of the consensus reads. Use trimming to remove these - it's useful to first run without trimming and do a multiple sequence alignment of the highest-count sequences with some of the parents to identify the adapter sequences to trim.
