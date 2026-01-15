@@ -275,7 +275,7 @@ def get_reads(wildcards, samples):
         repeats = get_column_by_sample(wildcards, samples, 'min_reps')
 
         if np.isnan(repeats):
-            return f"out/c3poa/{wildcards.sample}/split/R2C2_Consensus.fasta.gz"
+            return f"out/c3poa/{wildcards.sample}/splint/R2C2_Consensus.fasta.gz"
 
         else:
             return f"out/c3poa_filt/{wildcards.sample}.fasta.gz"
