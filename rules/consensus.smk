@@ -1,11 +1,22 @@
 from aavolve.snakemake_helpers import get_column_by_sample
 
+rule normalize_splint:
+   input:
+       splint = lambda wildcards: get_column_by_sample(wildcards, samples, "splint_file"),
+   output:
+       splint = "out/splint/{sample}/splint.fasta"
+   container: "docker://szsctt/lr_pybio:py310"
+   shell:
+       """
+       python3 -m aavolve.normalize_splint_fasta -i {input.splint} -o {output.splint}
+       """
+
 rule consensus:
    input:
        reads = lambda wildcards: get_column_by_sample(wildcards, samples, "read_file"),
-       splint = lambda wildcards: get_column_by_sample(wildcards, samples, "splint_file"),
+       splint = "out/splint/{sample}/splint.fasta",
    output:
-       consensus_reads = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+       consensus_reads = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
    params:
        dir = lambda wildcards, output: os.path.dirname(os.path.dirname(output.consensus_reads)) + '/'
    container: "docker://szsctt/lr_c3poa"
@@ -13,7 +24,7 @@ rule consensus:
    shell:
        """
        echo "running C3POa"
-       rm -r {params.dir}
+       rm -rf {params.dir}
        python3 /C3POa/C3POa.py \
         -r {input.reads} \
         -s {input.splint} \
@@ -22,7 +33,7 @@ rule consensus:
       
       # compress reads
       echo "compressing outputs"
-      pigz -p {threads} {params.dir}/split/*
+      pigz -p {threads} {params.dir}/splint/*
 
       echo "cleaning up temp files"
       # clean up temp files left behind
@@ -31,7 +42,7 @@ rule consensus:
 
 rule filter_consensus:
     input:
-        fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+        fasta = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
     output:
         filt = "out/c3poa_filt/{sample}.fasta.gz"
     params:
@@ -44,7 +55,7 @@ rule filter_consensus:
 
 rule count_repeats:
     input:
-        fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+        fasta = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
     output:
         counts = "out/c3poa/{sample}/repeat_counts.tsv"
     container: "docker://szsctt/lr_pybio:py310"

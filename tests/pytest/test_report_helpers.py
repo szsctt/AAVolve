@@ -131,7 +131,7 @@ class TestAssignFileType:
 
     @pytest.mark.parametrize("file_name, file_type, seq_type, exp", [ 
         ('file1.fastq', 'fastq', 'np-cc', 'Input'),
-        ('out/c3poa/sample/split/file1.fasta', 'fasta', 'np-cc', 'Consensus'),
+        ('out/c3poa/sample/splint/file1.fasta', 'fasta', 'np-cc', 'Consensus'),
         ('out/c3poa_filt/file1.fasta', 'fasta', 'np-cc', 'Filtered by repeats'),
         ('file1.fasta', 'fasta', 'sg', 'Input'),
         ('file1.txt', 'variant_tsv', 'np-cc', 'Filtered by reference coverage'),
