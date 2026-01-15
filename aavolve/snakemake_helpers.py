@@ -1,5 +1,8 @@
 import numpy as np
 from snakemake.io import expand
+import hashlib
+from pathlib import Path
+import re
 
 # general helpers
 def get_column_by_sample(wildcards, samples, column_name):
@@ -87,6 +90,75 @@ def get_anchor_seed(wildcards, samples):
 
 def anchors_enabled(wildcards, samples):
     return get_anchor_length(wildcards, samples) > 0
+
+
+def input_pair_id(parent_file: str, reference_file: str) -> str:
+    """Return a stable identifier for a (parent_file, reference_file) pair.
+
+    This is used to validate inputs once per unique file combination.
+    """
+
+    def _basename_without_compression(path: str) -> str:
+        name = Path(path).name
+        return name[:-3] if name.endswith(".gz") else name
+
+    def _stem(path: str) -> str:
+        return Path(_basename_without_compression(path)).stem
+
+    def _slug(text: str) -> str:
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", str(text)).strip("-")
+        return slug or "group"
+
+    parent_label = _slug(_stem(parent_file))
+    reference_label = _slug(_stem(reference_file))
+
+    # Add a short, stable hash suffix to avoid collisions (e.g. same basename in different dirs).
+    key = f"{parent_file}|{reference_file}"
+    suffix = hashlib.md5(key.encode("utf-8")).hexdigest()[:8]
+    return f"{parent_label}__{reference_label}__{suffix}"
+
+
+def build_input_validation_targets(samples_df):
+    """Build unique input-pair maps and the corresponding validation targets.
+
+    Returns:
+        input_validation_map: dict[pair_id] -> (parent_file, reference_file)
+        input_validation_samples: dict[pair_id] -> list[sample_name]
+        input_validation_targets: list of dummy files to add to rule all
+
+    Notes:
+        This function does not read any of the referenced files.
+    """
+
+    input_validation_map = {}
+    input_validation_samples = {}
+
+    for parent_file, reference_file, sample_name in zip(
+        samples_df.parent_file, samples_df.reference_file, samples_df.sample_name
+    ):
+        pair_id = input_pair_id(parent_file, reference_file)
+        input_validation_map[pair_id] = (parent_file, reference_file)
+        input_validation_samples.setdefault(pair_id, []).append(sample_name)
+
+    input_validation_targets = [
+        f"out/qc/input-checks/{pair_id}.txt" for pair_id in sorted(input_validation_map)
+    ]
+
+    return input_validation_map, input_validation_samples, input_validation_targets
+
+
+def build_group_report_targets(samples_df):
+    """Return group report targets keyed by unique parent/reference pairs.
+
+    Notes:
+        This function does not read any of the referenced files.
+    """
+
+    input_validation_map, input_validation_samples, _ = build_input_validation_targets(samples_df)
+    group_report_targets = [
+        f"out/qc/group_reports/{pair_id}_report.html" for pair_id in sorted(input_validation_map)
+    ]
+    return input_validation_map, input_validation_samples, group_report_targets
 
 
 def get_anchor_sequences_path(wildcards):

@@ -1,6 +1,7 @@
 import re
 
 from aavolve.get_samples import get_samples
+from aavolve.snakemake_helpers import build_group_report_targets, build_input_validation_targets
 from aavolve.utils import normalize_names
 
 
@@ -25,9 +26,16 @@ for name, seq_tech in zip(samples.sample_name, samples.seq_tech):
         consensus.append(f"out/c3poa_filt/{name}.fasta.gz")
         consensus.append(f"out/c3poa/{name}/repeat_counts.tsv")
 
+
+# Validate inputs once per unique (parent_file, reference_file) combination.
+input_validation_map, input_validation_samples, input_validation_targets = build_input_validation_targets(samples)
+_, _, group_report_targets = build_group_report_targets(samples)
+
 rule all:
     input: 
         consensus,
+        input_validation_targets,
+        group_report_targets,
         expand("out/aligned/{sample}.bam", sample=samples.sample_name),
         expand("out/aligned/{sample}.bam", sample=samples.parent_name),
         expand("out/variants/reads/{sample}.tsv.gz", sample=samples.sample_name),
@@ -43,6 +51,8 @@ rule all:
         expand("out/qc/{sample}_report.html", sample=samples.sample_name),
 
 include: 'rules/consensus.smk'
+include: 'rules/check_inputs.smk'
 include: 'rules/align.smk'
 include: 'rules/variants.smk'
 include: 'rules/transform_variants.smk'
+include: 'rules/group_report.smk'

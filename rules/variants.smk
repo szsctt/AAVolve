@@ -35,6 +35,7 @@ rule extract_variants_parents:
 # otherwise we use the first and last variant from rule first_last_variants_parents
 rule num_parents:
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         fa = lambda wildcards: get_parents(wildcards, samples)
     output:
         num_parents = "out/variants/parents/{sample}_num_parents.txt"

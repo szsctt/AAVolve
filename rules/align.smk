@@ -13,6 +13,8 @@ from aavolve.snakemake_helpers import (
 )
 
 rule generate_anchor_sequences:
+    input:
+        inputs_ok="out/qc/input-checks/_all.ok"
     output:
         anchors="out/anchors/{sample}.fasta"
     params:
@@ -32,6 +34,7 @@ rule generate_anchor_sequences:
 
 rule anchor_reads:
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         anchors="out/anchors/{sample}.fasta",
         reads=lambda wildcards: get_reads_for_anchor_input(wildcards, samples)
     output:
@@ -52,6 +55,7 @@ rule anchor_reads:
 
 rule anchor_reference:
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         anchors="out/anchors/{sample}.fasta",
         reference=lambda wildcards: get_reference(wildcards, samples)
     output:
@@ -74,6 +78,7 @@ rule trim_reads:
     Uses linked-adapter syntax '<5>...<3>' and retains only trimmed reads (--discard-untrimmed).
     """
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         reads = lambda wildcards: get_reads(wildcards, samples)
     output:
         trimmed = "out/trimmed/{sample}.trimmed.gz"
@@ -95,6 +100,7 @@ rule trim_reads:
 
 rule align:
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         reads = lambda wildcards: get_reads_for_align(wildcards, samples),
         reference = lambda wildcards: get_reference_for_align(wildcards, samples)
     output:

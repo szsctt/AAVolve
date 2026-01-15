@@ -4,6 +4,7 @@ from aavolve.snakemake_helpers import get_column_by_sample
 
 rule consensus:
    input:
+       inputs_ok = "out/qc/input-checks/_all.ok",
        reads = lambda wildcards: get_column_by_sample(wildcards, samples, "read_file"),
        splint = lambda wildcards: get_column_by_sample(wildcards, samples, "splint_file"),
    output:
@@ -35,6 +36,7 @@ rule consensus:
 
 rule filter_consensus:
     input:
+        inputs_ok = "out/qc/input-checks/_all.ok",
         fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
     output:
         filt = "out/c3poa_filt/{sample}.fasta.gz"
@@ -50,6 +52,7 @@ rule filter_consensus:
 
 rule count_repeats:
     input:
+        inputs_ok = "out/qc/input-checks/_all.ok",
         fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
     output:
         counts = "out/c3poa/{sample}/repeat_counts.tsv"

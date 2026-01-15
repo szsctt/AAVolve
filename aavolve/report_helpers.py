@@ -1,10 +1,11 @@
 import os
-import plotly_express as px
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 import re
+import hashlib
 
 from aavolve.utils import MAX_SEQS
 
@@ -182,20 +183,56 @@ def parent_heatmap(filename, parent_freq_file):
             zmin=0, zmax=1,
             hovertemplate='{text}<extra></extra>',
             text = df.values,
-            colorbar=dict(tickvals=tickvals, ticktext=parents))
+            showscale=False,
+        )
 
     p2 = go.Scatter(x=counts, 
                     y=df_nums.index, 
                     mode='lines+markers', 
                     line_color='black', 
                     marker=dict(color='black'), 
-                    showlegend=False)
+                    showlegend=True,
+                    name="Count",
+                    legendgroup="Metrics",
+                    legendgrouptitle_text="Metrics",
+        )
     fig = make_subplots(rows=1, cols=6, specs = [[{"colspan": 1}, {"colspan": 5}, None, None, None, None]], shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.05)
     fig.add_trace(p2, row=1, col=1)
     fig.add_trace(p1, row=1, col=2)
+
+    # Add a single combined legend for parent colors (instead of a separate colorbar).
+    for parent in parents:
+        fig.add_trace(
+            go.Scatter(
+                x=[0],
+                y=[0],
+                mode="markers",
+                marker=dict(
+                    size=10,
+                    color=color_dict[parent],
+                    line=dict(width=0.5, color="black"),
+                ),
+                name=str(parent),
+                visible="legendonly",
+                legendgroup="Parents",
+                legendgrouptitle_text="Parents",
+            ),
+            row=1,
+            col=2,
+        )
     fig['layout']['xaxis']['title'] = 'Count'
     fig['layout']['yaxis']['title'] = 'Read'
     fig['layout']['xaxis2']['title'] = 'Position in reference'
+
+    # Improve readability and prevent legend clipping in reports.
+    max_parent_len = max((len(p) for p in parents), default=0)
+    right_margin = min(520, 180 + int(max_parent_len * 6.5))
+    fig.update_layout(
+        margin=dict(l=60, r=right_margin, t=40, b=90),
+        legend=dict(x=1.02, xanchor="left", y=1, yanchor="top", font=dict(size=10)),
+    )
+    fig.update_xaxes(automargin=True)
+    fig.update_xaxes(tickangle=90, automargin=True, nticks=30, row=1, col=2)
 
     return fig
 
@@ -257,6 +294,15 @@ def plot_parent_frequencies(parents_file):
                   xaxis={'categoryorder':'array', 'categoryarray':df['variant']},
                  )
 
+    # Improve readability and avoid legend clipping.
+    fig.update_xaxes(tickangle=90, automargin=True, nticks=40)
+    max_parent_len = max((len(p) for p in parent_colors_dict.keys()), default=0)
+    right_margin = min(420, 120 + int(max_parent_len * 6.5))
+    fig.update_layout(
+        margin=dict(l=60, r=right_margin, t=60, b=140),
+        legend=dict(x=1.02, xanchor='left', y=1, yanchor='top', font=dict(size=10)),
+    )
+
     return fig
 
 def make_distance_heatmap(distance_file):
@@ -275,30 +321,39 @@ def parent_colors(parents_file):
     # change 'non_parental_1' etc to 'non parental'
     df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
 
-    # get list of unique parents
-    parents = df['parent'].unique().tolist()
+    # Get unique parents in file order (not sorted).
+    parents = []
+    seen = set()
+    for parent in df['parent'].tolist():
+        if parent in seen:
+            continue
+        seen.add(parent)
+        parents.append(parent)
 
-    # move non_parental and multiple to the end
-    if 'non parental' in parents:
-        parents.remove('non parental')
-    parents.append('non parental')
-    if 'multiple' in parents:
-        parents.remove('multiple')
-    parents.append('multiple')
+    # Ensure the special categories are present and placed at the end.
+    for special in ("non parental", "multiple"):
+        if special in parents:
+            parents.remove(special)
+    parents.extend(["non parental", "multiple"])
 
-    # create colormap for heatmap
-    if len(parents) < 11:
-        # for 10 or fewer parents, use safe qualitative colors
-        colors = px.colors.qualitative.Plotly[:len(parents)]
-    elif len(parents) < 25:
-        # for 11-24 parents, use light24 colors
-        colors = px.colors.qualitative.Light24[:len(parents)]
+    # Choose a palette based on how many distinct parents we need to show.
+    #
+    # Keep this stable across Plotly versions by using an explicit Prism palette
+    # (some Plotly versions expose Prism as RGB strings and with a shorter length).
+    prism_hex = [
+        '#FD3216', '#00FE35', '#6A76FC', '#FED4C4', '#FE00CE', '#0DF9FF', '#F6F926', '#FF9616',
+        '#479B55', '#EEA6FB', '#DC587D', '#D626FF', '#6E899C', '#00B5F7', '#B68E00', '#C9FBE5',
+    ]
+    total = len(parents)
+    if total <= len(px.colors.qualitative.Plotly):
+        colors = px.colors.qualitative.Plotly[:total]
+    elif total <= len(prism_hex):
+        colors = prism_hex[:total]
     else:
-        # sample colors from a continuous colormap
-        # this probably isn't going to look good
-        colors = px.colors.sample_colorscale(
-            px.colors.sequential.Turbo, len(parents))
-        
+        # Fall back to a continuous colorscale sampled across [0, 1].
+        xs = [i / (total - 1) for i in range(total)]
+        colors = px.colors.sample_colorscale(px.colors.sequential.Turbo, xs)
+
     return dict(zip(parents, colors))
 
 def numeric_position(col):
