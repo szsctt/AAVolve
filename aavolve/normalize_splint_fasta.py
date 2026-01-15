@@ -19,7 +19,7 @@ def normalize_splint_fasta(in_file: str, out_file: str) -> None:
 
     (_, seq) = records[0]
 
-    with open(out_file, "w") as out:
+    with use_open(out_file, "w") as out:
         out.write(">splint\n")
         for i in range(0, len(seq), 60):
             out.write(seq[i : i + 60] + "\n")
