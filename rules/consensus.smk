@@ -48,7 +48,7 @@ rule consensus:
 rule filter_consensus:
     input:
         inputs_ok = "out/qc/input-checks/_all.ok",
-        fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+        fasta = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
     output:
         filt = "out/c3poa_filt/{sample}.fasta.gz"
     params:
@@ -64,7 +64,7 @@ rule filter_consensus:
 rule count_repeats:
     input:
         inputs_ok = "out/qc/input-checks/_all.ok",
-        fasta = "out/c3poa/{sample}/split/R2C2_Consensus.fasta.gz"
+        fasta = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
     output:
         counts = "out/c3poa/{sample}/repeat_counts.tsv"
     log:
@@ -74,4 +74,3 @@ rule count_repeats:
         """
         python3 -m aavolve.count_RCA_repeats -i {input.fasta} -o {output.counts}
         """
-

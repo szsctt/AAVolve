@@ -246,8 +246,8 @@ def test_consensus_rules_present(tmp_path, snakefile, samples_config):
         consensus_jobs = [j for j in jobs_list if j.rule.name == 'consensus' and dict(j.wildcards).get('sample') == npcc_sample_name]
         assert len(consensus_jobs) > 0, f"Should have consensus job for np-cc sample '{npcc_sample_name}'"
         consensus_outputs = list(consensus_jobs[0].output)
-        assert f"out/c3poa/{npcc_sample_name}/split/R2C2_Consensus.fasta.gz" in consensus_outputs, \
-            f"Consensus job should output 'out/c3poa/{npcc_sample_name}/split/R2C2_Consensus.fasta.gz', got: {consensus_outputs}"
+        assert f"out/c3poa/{npcc_sample_name}/splint/R2C2_Consensus.fasta.gz" in consensus_outputs, \
+            f"Consensus job should output 'out/c3poa/{npcc_sample_name}/splint/R2C2_Consensus.fasta.gz', got: {consensus_outputs}"
         
         # Find filter_consensus job and check actual expanded paths
         filter_jobs = [j for j in jobs_list if j.rule.name == 'filter_consensus' and dict(j.wildcards).get('sample') == npcc_sample_name]
@@ -550,4 +550,3 @@ def test_align_inputs_no_trimming_no_anchors(tmp_path, snakefile, np_only_config
             assert any("data/" in str(inp) or inp.endswith(".fastq.gz") or inp.endswith(".fasta.gz") 
                       for inp in align_inputs), \
                 f"Align job should use raw read file from data directory, got: {align_inputs}"
-
