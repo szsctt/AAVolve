@@ -13,6 +13,7 @@ DEFAULT_GROUP_VARS = True
 DEFAULT_GROUP_VARS_DIST = 4
 DEFAULT_MAX_GROUP_DISTANCE = 0.2
 DEFAULT_TRIM = False
+DEFAULT_ANCHORS = 0
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -105,11 +106,22 @@ def get_command_options(config):
     if 'min_reps' in config:
         samples['min_reps'] = config['min_reps']
 
+    if 'achors' in config and 'anchors' not in config:
+        config['anchors'] = config['achors']
+    if 'anchors' in config:
+        samples['anchors'] = config['anchors']
+
 
     return pd.DataFrame(samples, index=[0])
 
 #### sanity checks on data ####
 def check_data(samples):
+
+    # accommodate historical typo 'achors' by normalising column name
+    if 'anchors' not in samples.columns and 'achors' in samples.columns:
+        samples = samples.rename(columns={'achors': 'anchors'})
+    elif 'anchors' in samples.columns and 'achors' in samples.columns:
+        raise ValueError("Columns 'anchors' and 'achors' are both present. Please keep only 'anchors'.")
 
     # required columns: sample_name, parent_name, reference_name, seq_tech, read_file, parent_file, reference_file
     for col in REQUIRED_COLUMNS:
@@ -251,6 +263,25 @@ def check_data(samples):
 
         samples.loc[i, 'adapter_5'] = adapter_5.strip()
         samples.loc[i, 'adapter_3'] = adapter_3.strip()
+
+    # anchor configuration
+    if 'anchors' not in samples.columns:
+        samples['anchors'] = [DEFAULT_ANCHORS] * len(samples)
+    else:
+        for i, value in enumerate(samples['anchors']):
+            if value is None or (isinstance(value, float) and pd.isnull(value)):
+                samples.loc[i, 'anchors'] = DEFAULT_ANCHORS
+                continue
+            try:
+                int_value = int(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"Column 'anchors' must contain non-negative integers. Found value {value!r} in row {i}")
+            if int_value < 0:
+                raise ValueError(f"Column 'anchors' must contain non-negative integers. Found value {value!r} in row {i}")
+            samples.loc[i, 'anchors'] = int_value
+
+    if len(samples.groupby(['parent_name', 'anchors'])) != len(samples.groupby('parent_name')):
+        raise ValueError("Each parent name (column 'parent_name') must always correspond to the same anchor length (column 'anchors')")
 
 
     # check if non_parental_freq is specified - otherwise fill with default

@@ -1,8 +1,9 @@
 .snakemake
 **/__pycache__
 out
-data
-config
+/data/
+/config/
+logs/
 .snakemake
 .cache
 .ipython

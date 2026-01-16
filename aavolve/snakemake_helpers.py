@@ -1,5 +1,8 @@
 import numpy as np
 from snakemake.io import expand
+import hashlib
+from pathlib import Path
+import re
 
 # general helpers
 def get_column_by_sample(wildcards, samples, column_name):
@@ -20,6 +23,192 @@ def get_column_by_parent(wildcards, samples, column_name):
 
 def is_fastq(file):
     return any((file.endswith('.fastq'), file.endswith('.fastq.gz'), file.endswith('.fq'), file.endswith('.fq.gz')))
+
+
+def get_anchor_length(wildcards, samples):
+    """Return anchor length configured for the sample/parent."""
+
+    column = 'anchors'
+    if column not in samples.columns:
+        return 0
+
+    if wildcards.sample in set(samples.sample_name):
+        value = get_column_by_sample(wildcards, samples, column)
+    elif wildcards.sample in set(samples.parent_name):
+        value = get_column_by_parent(wildcards, samples, column)
+    else:
+        raise ValueError(f"Sample {wildcards.sample} not found in samples DataFrame")
+
+    if value is None:
+        return 0
+
+    if isinstance(value, (float, np.floating)) and np.isnan(value):  # type: ignore[arg-type]
+        return 0
+
+    if isinstance(value, bool):
+        raise ValueError(
+            f"Anchor length must be a non-negative integer. Found boolean {value} for sample {wildcards.sample}"
+        )
+
+    try:
+        length = int(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(
+            f"Anchor length must be a non-negative integer. Found value {value!r} for sample {wildcards.sample}"
+        ) from err
+
+    if length < 0:
+        raise ValueError(f"Anchor length must be a non-negative integer. Found {length} for sample {wildcards.sample}")
+
+    return length
+
+
+def get_anchor_seed(wildcards, samples):
+    """
+    Generate a consistent seed for anchor generation based on parent+reference+anchor_length.
+    Samples with the same parent, reference, and anchor length will share the same anchors.
+    """
+    # Get parent name
+    if wildcards.sample in set(samples.parent_name):
+        parent_name = wildcards.sample
+    else:
+        parent_name = get_column_by_sample(wildcards, samples, 'parent_name')
+    
+    # Get reference name
+    if wildcards.sample in set(samples.parent_name):
+        reference_name = get_column_by_parent(wildcards, samples, 'reference_name')
+    else:
+        reference_name = get_column_by_sample(wildcards, samples, 'reference_name')
+    
+    # Get anchor length
+    anchor_length = get_anchor_length(wildcards, samples)
+    
+    # Create a consistent seed from parent+reference+length
+    seed = f"{parent_name}_{reference_name}_{anchor_length}"
+    return seed
+
+
+def anchors_enabled(wildcards, samples):
+    return get_anchor_length(wildcards, samples) > 0
+
+
+def input_pair_id(parent_file: str, reference_file: str) -> str:
+    """Return a stable identifier for a (parent_file, reference_file) pair.
+
+    This is used to validate inputs once per unique file combination.
+    """
+
+    def _basename_without_compression(path: str) -> str:
+        name = Path(path).name
+        return name[:-3] if name.endswith(".gz") else name
+
+    def _stem(path: str) -> str:
+        return Path(_basename_without_compression(path)).stem
+
+    def _slug(text: str) -> str:
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", str(text)).strip("-")
+        return slug or "group"
+
+    parent_label = _slug(_stem(parent_file))
+    reference_label = _slug(_stem(reference_file))
+
+    # Add a short, stable hash suffix to avoid collisions (e.g. same basename in different dirs).
+    key = f"{parent_file}|{reference_file}"
+    suffix = hashlib.md5(key.encode("utf-8")).hexdigest()[:8]
+    return f"{parent_label}__{reference_label}__{suffix}"
+
+
+def build_input_validation_targets(samples_df):
+    """Build unique input-pair maps and the corresponding validation targets.
+
+    Returns:
+        input_validation_map: dict[pair_id] -> (parent_file, reference_file)
+        input_validation_samples: dict[pair_id] -> list[sample_name]
+        input_validation_targets: list of dummy files to add to rule all
+
+    Notes:
+        This function does not read any of the referenced files.
+    """
+
+    input_validation_map = {}
+    input_validation_samples = {}
+
+    for parent_file, reference_file, sample_name in zip(
+        samples_df.parent_file, samples_df.reference_file, samples_df.sample_name
+    ):
+        pair_id = input_pair_id(parent_file, reference_file)
+        input_validation_map[pair_id] = (parent_file, reference_file)
+        input_validation_samples.setdefault(pair_id, []).append(sample_name)
+
+    input_validation_targets = [
+        f"out/qc/input-checks/{pair_id}.txt" for pair_id in sorted(input_validation_map)
+    ]
+
+    return input_validation_map, input_validation_samples, input_validation_targets
+
+
+def build_group_report_targets(samples_df):
+    """Return group report targets keyed by unique parent/reference pairs.
+
+    Notes:
+        This function does not read any of the referenced files.
+    """
+
+    input_validation_map, input_validation_samples, _ = build_input_validation_targets(samples_df)
+    group_report_targets = [
+        f"out/qc/group_reports/{pair_id}_report.html" for pair_id in sorted(input_validation_map)
+    ]
+    return input_validation_map, input_validation_samples, group_report_targets
+
+
+def get_anchor_sequences_path(wildcards):
+    return f"out/anchors/{wildcards.sample}.fasta"
+
+
+def get_reads_for_anchor_input(wildcards, samples):
+    if wildcards.sample in set(samples.parent_name):
+        return get_reads(wildcards, samples)
+    if trim_is_enabled(wildcards, samples):
+        return f"out/trimmed/{wildcards.sample}.trimmed.gz"
+    return get_reads(wildcards, samples)
+
+
+def get_anchor_reads_suffix(wildcards, samples):
+    base_reads = get_reads(wildcards, samples)
+
+    if wildcards.sample in set(samples.parent_name):
+        return '.fasta.gz' if base_reads.endswith('.gz') else '.fasta'
+
+    if trim_is_enabled(wildcards, samples):
+        return '.fastq.gz'
+
+    if is_fastq(base_reads):
+        return '.fastq.gz' if base_reads.endswith('.gz') else '.fastq'
+
+    return '.fasta.gz' if base_reads.endswith('.gz') else '.fasta'
+
+
+def get_anchored_reads_path(wildcards, samples):
+    suffix = get_anchor_reads_suffix(wildcards, samples)
+    return f"out/anchors/reads/{wildcards.sample}{suffix}"
+
+
+def get_anchored_reference_path(wildcards):
+    return f"out/anchors/references/{wildcards.sample}.fasta"
+
+
+def _get_reference_base(wildcards, samples):
+    if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
+        raise ValueError(f"Sample {wildcards.sample} not found")
+
+    parents = {}
+    for k, v in zip(samples['parent_name'], samples['reference_file']):
+        parents[k] = v
+
+    if wildcards.sample in parents.keys():
+        return parents[wildcards.sample]
+
+    return get_column_by_sample(wildcards, samples, 'reference_file')
 
 
 def minimap2_params_with_default(wildcards, samples):
@@ -95,25 +284,18 @@ def get_reads(wildcards, samples):
     return get_column_by_sample(wildcards, samples, 'read_file')
 
 def get_reference(wildcards, samples):
-    """
-    Get appropriate reference for wildcards.sample
-    Either parental references,
-    or just the reference otherwise
-    """
-    if wildcards.sample not in set(samples.sample_name) | set(samples.parent_name):
-        raise ValueError(f"Sample {wildcards.sample} not found")
+    """Return the raw reference path (without anchors)."""
 
-    # make a dictionary of parents
-    parents = {}
-    for k, v in zip(samples['parent_name'], samples['reference_file']):
-        parents[k] = v
-    
-    # if one of the parents, return parent sequences
-    if wildcards.sample in parents.keys():
-        return parents[wildcards.sample]
-    
-    # otherwise, just return reference
-    return get_column_by_sample(wildcards, samples, 'reference_file')
+    return _get_reference_base(wildcards, samples)
+
+
+def get_reference_for_align(wildcards, samples):
+    """Return reference path to use during alignment and variant extraction."""
+
+    if anchors_enabled(wildcards, samples):
+        return get_anchored_reference_path(wildcards)
+
+    return _get_reference_base(wildcards, samples)
 
 
 def trim_is_enabled(wildcards, samples):
@@ -139,6 +321,9 @@ def trim_is_enabled(wildcards, samples):
 
 def get_reads_for_align(wildcards, samples):
     """Return the appropriate input for minimap2 alignment, considering trimming."""
+
+    if anchors_enabled(wildcards, samples):
+        return get_anchored_reads_path(wildcards, samples)
 
     reads = get_reads(wildcards, samples)
 

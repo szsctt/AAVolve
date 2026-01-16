@@ -2,7 +2,7 @@ import tempfile
 import gzip
 import pytest
 from aavolve.utils import (
-    use_open, get_repeats_from_r2c2_name, seq_generator, 
+    use_open, normalize_names, get_repeats_from_r2c2_name, seq_generator, 
     read_variant_file, get_variant_type, get_variant, 
     get_variants_set, get_header, get_reference_name,
     sort_var_names, get_parents, count_lines,
@@ -41,6 +41,17 @@ class TestUseOpen:
             with use_open(temp.name, 'rt') as handle:
                 result = handle.read()
         assert result == ''
+
+
+class TestNormalizeNames:
+
+    def test_normalize_names_filters_nulls(self):
+        values = ["alpha", "", "  ", None, float("nan"), "NaN", "beta", "alpha"]
+        assert normalize_names(values) == ["alpha", "beta"]
+
+    def test_normalize_names_handles_mixed_types(self):
+        values = ["  sample1", 2, 2, 2.0, "sample2  ", "Sample3", "sample1"]
+        assert normalize_names(values) == ["2", "2.0", "Sample3", "sample1", "sample2"]
 
 class TestGetRepeatsFromR2C2:
     

@@ -3,16 +3,25 @@ import pytest
 import numpy as np
 import pandas as pd
 from aavolve.snakemake_helpers import (
+    anchors_enabled,
     fill_parents,
     format_input_reads,
+    get_anchor_length,
+    get_anchor_seed,
+    get_anchor_sequences_path,
+    get_anchored_reads_path,
+    get_anchored_reference_path,
     get_column_by_parent,
     get_column_by_sample,
     get_dmat_input,
     get_linked_adapters_for_sample,
     get_parents,
+    get_reads,
     get_reads_for_align,
+    get_reads_for_anchor_input,
     get_reads_for_counting,
     get_reference,
+    get_reference_for_align,
     is_fastq,
     minimap2_params_with_default,
     trim_is_enabled,
@@ -113,6 +122,7 @@ class TestTrimmingHelpers:
             'trim': [False],
             'adapter_5': ['AAA'],
             'adapter_3': ['TTT'],
+            'anchors': [0],
         }
         for key, value in overrides.items():
             base[key] = value
@@ -162,6 +172,117 @@ class TestTrimmingHelpers:
         with pytest.raises(ValueError):
             get_linked_adapters_for_sample(wildcards, samples)
 
+
+class TestAnchorHelpers:
+
+    def _make_samples(self, anchors_sample=5, trim=False, read_file='reads.fastq.gz', parent_file='parent1.fa', seq_tech='np'):
+        return pd.DataFrame(
+            {
+                'sample_name': ['sample1'],
+                'parent_name': ['parent1'],
+                'parent_file': [parent_file],
+                'reference_file': ['ref.fa'],
+                'read_file': [read_file],
+                'seq_tech': [seq_tech],
+                'min_reps': [np.nan],
+                'trim': [trim],
+                'adapter_5': ['AAA'],
+                'adapter_3': ['TTT'],
+                'anchors': [anchors_sample],
+            }
+        )
+
+    def test_get_anchor_length_sample(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchor_length(wildcards, samples) == 5
+
+    def test_get_anchor_length_parent(self):
+        samples = self._make_samples()
+        samples.loc[0, 'anchors'] = 6
+        wildcards = SimpleNamespace(sample='parent1')
+        assert get_anchor_length(wildcards, samples) == 6
+
+    def test_anchors_enabled_true(self):
+        samples = self._make_samples()
+        assert anchors_enabled(SimpleNamespace(sample='sample1'), samples) is True
+
+    def test_anchors_enabled_false_when_zero(self):
+        samples_zero = self._make_samples(anchors_sample=0)
+        assert anchors_enabled(SimpleNamespace(sample='sample1'), samples_zero) is False
+
+    def test_anchors_enabled_invalid_value_raises(self):
+        samples = self._make_samples(anchors_sample=-1)
+        with pytest.raises(ValueError):
+            anchors_enabled(SimpleNamespace(sample='sample1'), samples)
+
+    @pytest.mark.parametrize("invalid_value", [-1, True, "abc"])
+    def test_get_anchor_length_invalid_values_raise(self, invalid_value):
+        samples = self._make_samples(anchors_sample=invalid_value)
+        wildcards = SimpleNamespace(sample='sample1')
+        with pytest.raises(ValueError):
+            get_anchor_length(wildcards, samples)
+
+    def test_get_anchored_reads_path_trimmed(self):
+        samples = self._make_samples(trim=True)
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchored_reads_path(wildcards, samples) == 'out/anchors/reads/sample1.fastq.gz'
+
+    def test_get_anchored_reads_path_untrimmed_fastq(self):
+        samples = self._make_samples(trim=False, read_file='reads.fastq')
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchored_reads_path(wildcards, samples) == 'out/anchors/reads/sample1.fastq'
+
+    def test_get_anchored_reads_path_untrimmed_fastq_gz(self):
+        samples = self._make_samples(trim=False, read_file='reads.fastq.gz')
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchored_reads_path(wildcards, samples) == 'out/anchors/reads/sample1.fastq.gz'
+
+    def test_get_anchored_reads_path_untrimmed_fasta(self):
+        samples = self._make_samples(trim=False, read_file='reads.fasta')
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchored_reads_path(wildcards, samples) == 'out/anchors/reads/sample1.fasta'
+
+    def test_get_anchored_reads_path_parent(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='parent1')
+        assert get_anchored_reads_path(wildcards, samples) == 'out/anchors/reads/parent1.fasta'
+
+    def test_get_anchored_reference_path(self):
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchored_reference_path(wildcards) == 'out/anchors/references/sample1.fasta'
+
+    def test_get_anchor_sequences_path(self):
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_anchor_sequences_path(wildcards) == 'out/anchors/sample1.fasta'
+
+    def test_reads_for_anchor_input_trimmed(self):
+        samples = self._make_samples(trim=True)
+        wildcards = SimpleNamespace(sample='sample1')
+        path = get_reads_for_anchor_input(wildcards, samples)
+        assert path == 'out/trimmed/sample1.trimmed.gz'
+
+    def test_reads_for_anchor_input_untrimmed_sample(self):
+        samples = self._make_samples(trim=False)
+        wildcards = SimpleNamespace(sample='sample1')
+        path = get_reads_for_anchor_input(wildcards, samples)
+        assert path == 'reads.fastq.gz'
+
+    def test_reads_for_anchor_input_parent(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='parent1')
+        # parent read is directly from parent_file
+        assert get_reads_for_anchor_input(wildcards, samples) == 'parent1.fa'
+
+    def test_get_reads_for_align_with_anchors(self):
+        samples = self._make_samples(trim=False)
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_reads_for_align(wildcards, samples) == 'out/anchors/reads/sample1.fastq.gz'
+
+    def test_get_reference_for_align_with_anchors(self):
+        samples = self._make_samples()
+        wildcards = SimpleNamespace(sample='sample1')
+        assert get_reference_for_align(wildcards, samples) == 'out/anchors/references/sample1.fasta'
 
 class TestGetReference:
 
@@ -344,4 +465,62 @@ class TestFormatInputReads:
     def test_format_input_reads(self, input, exp):
         
         assert format_input_reads(input) == exp
+
+class TestGetAnchorSeed:
+    """Test that samples with same parent+reference+anchor_length get same seed"""
+
+    def test_same_parent_reference_length_same_seed(self, samples_df):
+        """Samples with identical parent, reference, and anchor length should get identical seeds"""
+        # Create wildcards for two different samples that share parent and reference
+        # From conftest, we have samples with parent_name='aav2389' using reference_name='aav2'
+        wildcards1 = type('obj', (object,), {'sample': 'np-2389-only'})()
+        wildcards2 = type('obj', (object,), {'sample': 'np-2389-filt'})()
+        
+        seed1 = get_anchor_seed(wildcards1, samples_df)
+        seed2 = get_anchor_seed(wildcards2, samples_df)
+        
+        assert seed1 == seed2, f"Expected identical seeds for samples with same parent+reference+length, got {seed1} and {seed2}"
+
+    def test_different_parent_different_seed(self, samples_df):
+        """Samples with different parents should get different seeds"""
+        # np-2389-only uses parent aav2389, np-cc-aav2 uses parent aav2
+        wildcards1 = type('obj', (object,), {'sample': 'np-2389-only'})()
+        wildcards2 = type('obj', (object,), {'sample': 'np-cc-aav2'})()
+        
+        seed1 = get_anchor_seed(wildcards1, samples_df)
+        seed2 = get_anchor_seed(wildcards2, samples_df)
+        
+        assert seed1 != seed2, f"Expected different seeds for different parents, got {seed1} and {seed2}"
+
+    def test_parent_sample_uses_own_name(self, samples_df):
+        """When wildcards.sample is a parent name, it should use that as parent_name"""
+        # 'aav2389' is a parent_name in the samples
+        wildcards = type('obj', (object,), {'sample': 'aav2389'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # Seed should start with the parent name
+        assert seed.startswith('aav2389_'), f"Expected seed to start with parent name 'aav2389_', got {seed}"
+
+    def test_seed_includes_anchor_length(self, samples_df):
+        """Seed should include the anchor length"""
+        wildcards = type('obj', (object,), {'sample': 'np-2389-only'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # np-2389-only has anchor length 20
+        assert seed.endswith('_20'), f"Expected seed to end with '_20', got {seed}"
+
+    def test_seed_format(self, samples_df):
+        """Seed should follow format: parent_reference_anchorlength"""
+        wildcards = type('obj', (object,), {'sample': 'np-2389-only'})()
+        
+        seed = get_anchor_seed(wildcards, samples_df)
+        
+        # Should be: aav2389_aav2_20
+        parts = seed.split('_')
+        assert len(parts) >= 3, f"Expected seed to have at least 3 parts separated by '_', got {seed}"
+        
+        # Last part should be numeric (anchor length)
+        assert parts[-1].isdigit(), f"Expected last part of seed to be numeric, got {parts[-1]}"
         

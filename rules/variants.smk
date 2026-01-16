@@ -1,33 +1,46 @@
-from aavolve.snakemake_helpers import get_column_by_sample, get_parents, fill_parents
+from aavolve.snakemake_helpers import (
+    get_anchor_length,
+    get_column_by_sample,
+    get_parents,
+    get_reference_for_align,
+    fill_parents,
+)
 
 # first, get variants from the parents
 rule extract_variants_parents:
-  input:
-    aln = rules.align.output.aligned,
-    idx = rules.align.output.idx,
-    ref = lambda wildcards: get_reference(wildcards, samples)
-  output:
-    var = "out/variants/parents/{sample}.tsv.gz",
-  conda: "../deps/pybio/env.yml"
-  container: "docker://szsctt/lr_pybio:py310"
-  wildcard_constraints:
-    sample = "|".join(samples.parent_name)
-  shell:
-    """
-    python3 -m aavolve.extract_features_from_sam \
-     -i {input.aln} \
-     -r {input.ref} \
-     -o {output.var}  
-    """ 
+    input:
+        aln = rules.align.output.aligned,
+        idx = rules.align.output.idx,
+        ref = lambda wildcards: get_reference_for_align(wildcards, samples)
+    output:
+        var = "out/variants/parents/{sample}.tsv.gz",
+    container: "docker://szsctt/lr_pybio:py310"
+    wildcard_constraints:
+        sample = "|".join(samples.parent_name)
+    params:
+        anchor_length = lambda wildcards: get_anchor_length(wildcards, samples)
+    log:
+        "logs/extract_variants_parents/{sample}.log"
+    shell:
+        """
+        python3 -m aavolve.extract_features_from_sam \
+            -i {input.aln} \
+            -r {input.ref} \
+            -o {output.var} \
+            --anchor-length {params.anchor_length}
+        """ 
 
 # number of parents in each parent fasta
 # if there is only one we use 0 and -1 for must-start-before and must-end-after
 # otherwise we use the first and last variant from rule first_last_variants_parents
 rule num_parents:
     input:
+        inputs_ok="out/qc/input-checks/_all.ok",
         fa = lambda wildcards: get_parents(wildcards, samples)
     output:
         num_parents = "out/variants/parents/{sample}_num_parents.txt"
+    log:
+        "logs/num_parents/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
         sample = "|".join(samples.parent_name)
@@ -49,6 +62,8 @@ rule first_last_variants_parents:
         n_parents = "out/variants/parents/{sample}_num_parents.txt"
     output:
         first_last = "out/variants/parents/{sample}_first_last.txt"
+    log:
+        "logs/first_last_variants_parents/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
         sample = "|".join(samples.parent_name)
@@ -69,16 +84,19 @@ rule extract_variants_reads:
     input:
         aln = rules.align.output.aligned,
         idx = rules.align.output.idx,
-        ref = lambda wildcards: get_reference(wildcards, samples),
+        ref = lambda wildcards: get_reference_for_align(wildcards, samples),
         first_last = lambda wildcards: fill_parents(wildcards, samples, rules.first_last_variants_parents.output.first_last),
         n_parents = lambda wildcards: fill_parents(wildcards, samples, rules.num_parents.output.num_parents)
     output:
         var = "out/variants/reads/{sample}.tsv.gz",
         read_ids = "out/variants/reads/{sample}_read-ids.txt"
-    conda: "../deps/pybio/env.yml"
     container: "docker://szsctt/lr_pybio:py310"
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
+    params:
+        anchor_length = lambda wildcards: get_anchor_length(wildcards, samples)
+    log:
+        "logs/extract_variants_reads/{sample}.log"
     shell:
         """
         NPAR=$(cat {input.n_parents})
@@ -98,6 +116,7 @@ rule extract_variants_reads:
             -O {output.read_ids} \
             --must-start-before $FIRST \
             --must-end-after $LAST \
+            --anchor-length {params.anchor_length}
         """
 
 # count the number of reads we ended up with data for (some will be excluded
@@ -111,6 +130,8 @@ rule count_variant_reads:
         cat = lambda wildcards, input: "zcat" if input.var.endswith('.gz') else 'cat'
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
+    log:
+        "logs/count_variant_reads/{sample}.log"
     shell:
         """
         {params.cat} {input.var} | cut -f3 -d$'\\t' | uniq | wc -l > {output.read_count}

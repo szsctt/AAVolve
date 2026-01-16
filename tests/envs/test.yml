@@ -3,16 +3,16 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - pytest=7.4
+  - pytest=9
   - pandas=2.0
   - pysam=0.22
   - biopython=1.81
   - tqdm=4.65
   - seaborn=0.12
   - mafft=7.520
-  - quarto=1.4
+  - quarto=1.8
   - jupyter=1.0
   - plotly_express=0.4
   - plotly=5.19
   - papermill=2.5
-  - snakemake-minimal=7
+  - snakemake-minimal=8
