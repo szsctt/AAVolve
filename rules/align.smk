@@ -97,6 +97,31 @@ rule trim_reads:
         ) 2> {log}
         """
 
+rule qc_trimming_msa:
+    """
+    QC adapter trimming by aligning the reference plus the first 200 trimmed reads.
+    """
+    input:
+        inputs_ok="out/qc/input-checks/_all.ok",
+        trimmed="out/trimmed/{sample}.trimmed.gz",
+        reference=lambda wildcards: get_reference(wildcards, samples),
+    output:
+        msa="out/qc/trimming/{sample}.mafft.fasta",
+    threads: 4
+    log:
+        "logs/qc_trimming_msa/{sample}.log"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m aavolve.qc_trimming_msa \
+            --reference {input.reference} \
+            --trimmed {input.trimmed} \
+            --output {output.msa} \
+            --max-seqs 200 \
+            --threads {threads} \
+            2> {log}
+        """
+
 
 rule align:
     input:
