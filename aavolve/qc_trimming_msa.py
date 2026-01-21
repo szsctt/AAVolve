@@ -110,10 +110,15 @@ def build_msa(
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build a MAFFT MSA for QC: reference + first N reads from a trimmed file."
+        description="Build a MAFFT MSA for QC: reference + first N reads from a reads file (pre- or post-trimming)."
     )
     parser.add_argument("--reference", required=True, help="Reference FASTA (optionally gzipped).")
-    parser.add_argument("--trimmed", required=True, help="Trimmed reads FASTA/FASTQ (optionally gzipped).")
+    reads_group = parser.add_mutually_exclusive_group(required=True)
+    reads_group.add_argument("--reads", help="Reads FASTA/FASTQ (optionally gzipped).")
+    reads_group.add_argument(
+        "--trimmed",
+        help="Alias for --reads (kept for backwards compatibility).",
+    )
     parser.add_argument("--output", required=True, help="Output aligned FASTA path.")
     parser.add_argument("--max-seqs", type=int, default=200, help="Number of reads to include (default: 200).")
     parser.add_argument("--threads", type=int, default=1, help="Threads for MAFFT (default: 1).")
@@ -122,9 +127,10 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     args = parse_args(argv)
+    reads_path = args.reads or args.trimmed
     build_msa(
         reference_path=args.reference,
-        trimmed_path=args.trimmed,
+        trimmed_path=reads_path,
         output_msa_path=args.output,
         max_reads=args.max_seqs,
         threads=args.threads,
@@ -134,4 +140,3 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

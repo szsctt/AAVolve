@@ -39,11 +39,14 @@ if "trim" in samples.columns:
         if isinstance(trim, bool) and trim
     ]
 
+pretrim_qc_targets = [f"out/qc/trimming/{sample}.pretrim.mafft.fasta" for sample in samples.sample_name]
+
 rule all:
     input: 
         consensus,
         input_validation_targets,
         group_report_targets,
+        pretrim_qc_targets,
         trim_qc_targets,
         expand("out/aligned/{sample}.bam", sample=samples.sample_name),
         expand("out/aligned/{sample}.bam", sample=samples.parent_name),

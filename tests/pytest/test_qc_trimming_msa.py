@@ -8,6 +8,7 @@ from Bio import SeqIO
 from aavolve.qc_trimming_msa import (
     build_msa,
     detect_seq_format,
+    parse_args,
     run_mafft,
     write_reference_and_reads,
 )
@@ -108,3 +109,25 @@ def test_build_msa_writes_output(monkeypatch, tmp_path):
     assert output.exists()
     assert output.read_text().startswith(">ref__ref")
 
+
+def test_parse_args_accepts_reads(tmp_path):
+    reference = tmp_path / "ref.fa"
+    reference.write_text(">ref\nACGT\n")
+    reads = tmp_path / "reads.fasta.gz"
+    _write_gz_text(str(reads), ">r1\nACGT\n")
+    output = tmp_path / "out.fa"
+
+    args = parse_args(
+        [
+            "--reference",
+            str(reference),
+            "--reads",
+            str(reads),
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert str(args.reference) == str(reference)
+    assert str(args.reads) == str(reads)
+    assert args.trimmed is None
