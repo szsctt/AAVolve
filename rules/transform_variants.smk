@@ -304,7 +304,8 @@ rule report:
     container: "docker://szsctt/lr_pybio:py310"
     params:
         seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),
-        report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
+        report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook),
+        report_dir= lambda wildcards, output: os.path.dirname(output.report),
     shell:
         """
         pwd
@@ -319,6 +320,6 @@ rule report:
             -p dmat_nt_random {input.dmat_nt_random} \
             -p dmat_aa_random {input.dmat_aa_random}
 
-        cd out/qc
+        cd {params.report_dir}
         quarto render {params.report_basename}
         """

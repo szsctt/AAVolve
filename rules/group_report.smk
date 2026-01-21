@@ -79,6 +79,7 @@ rule group_report:
     container: "docker://szsctt/lr_pybio:py310"
     params:
         report_basename=lambda wildcards, output: output.tmp_notebook.split('/')[-1],
+        report_dir= lambda wildcards, output: os.path.dirname(output.report),
     shell:
         """
         set -euo pipefail
@@ -89,6 +90,6 @@ rule group_report:
             -p group_id {wildcards.pair_id} \
             -p manifest {input.manifest}
 
-        cd out/qc/group_reports
+        cd {params.report_dir}
         quarto render {params.report_basename}
         """
