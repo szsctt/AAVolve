@@ -297,8 +297,8 @@ rule report:
         dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
         report_template = lambda wildcards: os.path.join(workflow.basedir, "aavolve/report.ipynb")
     output:
-        report = "out/qc/{sample}_report.html",
-        tmp_notebook = "out/qc/{sample}_report.ipynb",
+        report = "out/reports/sample_reports/{sample}_report.html",
+        tmp_notebook = temp("out/reports/sample_reports/{sample}_report.ipynb"),
     log:
         "logs/report/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"

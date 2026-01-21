@@ -23,7 +23,7 @@ def test_build_group_report_targets(samples_df):
 
     assert len(group_report_targets) == len(input_validation_map)
     for target in group_report_targets:
-        assert target.startswith("out/qc/group_reports/")
+        assert target.startswith("out/reports/group_reports/")
         assert target.endswith("_report.html")
         pair_id = target.split("/")[-1].replace("_report.html", "")
         assert pair_id in input_validation_map

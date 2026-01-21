@@ -32,7 +32,7 @@ def _manifest_rows(pair_id: str):
 
 rule group_manifest:
     output:
-        manifest="out/qc/group_reports/{pair_id}_manifest.tsv",
+        manifest="out/reports/group_reports/{pair_id}_manifest.tsv",
     run:
         from pathlib import Path
         rows = _manifest_rows(wildcards.pair_id)
@@ -47,7 +47,7 @@ rule group_manifest:
 
 rule group_report:
     input:
-        manifest="out/qc/group_reports/{pair_id}_manifest.tsv",
+        manifest="out/reports/group_reports/{pair_id}_manifest.tsv",
         # ensure per-sample outputs exist before attempting to render
         read_counts=lambda wildcards: [
             f"out/qc/{s}_read-counts.tsv" for s in _samples_for_pair(wildcards.pair_id)
@@ -72,8 +72,8 @@ rule group_report:
         ],
         report_template=lambda wildcards: os.path.join(workflow.basedir, "aavolve/group_report.ipynb"),
     output:
-        report="out/qc/group_reports/{pair_id}_report.html",
-        tmp_notebook="out/qc/group_reports/{pair_id}_report.ipynb",
+        report="out/reports/group_reports/{pair_id}_report.html",
+        tmp_notebook=temp("out/reports/group_reports/{pair_id}_report.ipynb"),
     log:
         "logs/report_groups/{pair_id}.log"
     container: "docker://szsctt/lr_pybio:py310"

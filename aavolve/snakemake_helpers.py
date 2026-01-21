@@ -156,7 +156,7 @@ def build_group_report_targets(samples_df):
 
     input_validation_map, input_validation_samples, _ = build_input_validation_targets(samples_df)
     group_report_targets = [
-        f"out/qc/group_reports/{pair_id}_report.html" for pair_id in sorted(input_validation_map)
+        f"out/reports/group_reports/{pair_id}_report.html" for pair_id in sorted(input_validation_map)
     ]
     return input_validation_map, input_validation_samples, group_report_targets
 
