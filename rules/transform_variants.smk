@@ -90,6 +90,40 @@ rule combine_variants:
         gzip {params.combined_unzip}
         """
 
+rule warn_non_parental_outside_window:
+    input:
+        high_freq = rules.variant_frequency.output.high_freq,
+        first_last = lambda wildcards: expand(
+            "out/variants/parents/{parent}_first_last.txt",
+            parent=get_column_by_sample(wildcards, samples, "parent_name"),
+        ),
+        n_parents = lambda wildcards: expand(
+            "out/variants/parents/{parent}_num_parents.txt",
+            parent=get_column_by_sample(wildcards, samples, "parent_name"),
+        ),
+    output:
+        warning = "out/qc/warnings/{sample}_non_parental_outside_window.txt"
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
+    params:
+        include_non_parental = lambda wildcards: get_column_by_sample(wildcards, samples, "include_non_parental"),
+        require_end_to_end_alignment = lambda wildcards: get_column_by_sample(wildcards, samples, "require_end_to_end_alignment"),
+    log:
+        "logs/warn_non_parental_outside_window/{sample}.log"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        NPAR=$(cat {input.n_parents})
+        python3 -m aavolve.warn_non_parental_outside_window \
+            --high-freq-variants {input.high_freq} \
+            --parent-first-last {input.first_last} \
+            --n-parents $NPAR \
+            --include-non-parental {params.include_non_parental} \
+            --require-end-to-end-alignment {params.require_end_to_end_alignment} \
+            --output {output.warning} \
+            2> {log}
+        """
+
 # pivot long to wide to get table with one read per row
 rule pivot:
     input:
@@ -321,6 +355,7 @@ rule report:
         assigned_counts = rules.distinct_reads.output.counts,
         freqs = rules.parent_freq.output.freqs,
         breaks_per_var = rules.ident_breakpoints.output.break_per_var,
+        variant_window_warning = rules.warn_non_parental_outside_window.output.warning,
         dmat_nt_first = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="first", allow_missing=True),
         dmat_aa_first = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="first", allow_missing=True),
         dmat_nt_random = expand(rules.dmat.output.dmat, seq_type="nt-seq", subset="random", allow_missing=True),
@@ -345,6 +380,7 @@ rule report:
             -p assigned_parents {input.assigned_counts} \
             -p parent_frequencies {input.freqs} \
             -p breakpoints_per_var {input.breaks_per_var} \
+            -p variant_window_warning {input.variant_window_warning} \
             -p dmat_nt_first {input.dmat_nt_first} \
             -p dmat_aa_first {input.dmat_aa_first} \
             -p dmat_nt_random {input.dmat_nt_random} \

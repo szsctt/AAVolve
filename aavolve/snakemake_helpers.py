@@ -92,6 +92,32 @@ def anchors_enabled(wildcards, samples):
     return get_anchor_length(wildcards, samples) > 0
 
 
+def get_must_start_before_end_after(
+    *,
+    first_last_file: str,
+    n_parents_file: str,
+    require_end_to_end_alignment: bool,
+) -> tuple[int, int]:
+    """
+    Return (--must-start-before, --must-end-after) bounds for variant extraction.
+
+    - If require_end_to_end_alignment=True: require full reference coverage (0, -1).
+    - If only one parent sequence is present: require full reference coverage (0, -1).
+    - Otherwise: require coverage from first to last parental variant.
+    """
+
+    n_parents_text = Path(n_parents_file).read_text().strip()
+    n_parents = int(n_parents_text) if n_parents_text else 0
+
+    if require_end_to_end_alignment or n_parents <= 1:
+        return 0, -1
+
+    lines = [line.strip() for line in Path(first_last_file).read_text().splitlines() if line.strip()]
+    if len(lines) < 2:
+        raise ValueError(f"Expected two lines (first/last) in {first_last_file!r}, got {len(lines)}")
+    return int(lines[0]), int(lines[1])
+
+
 def slugify(text: str, *, allow_underscore: bool = True) -> str:
     """Return a filesystem-friendly identifier derived from text."""
 

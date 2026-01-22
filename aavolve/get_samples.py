@@ -15,6 +15,7 @@ DEFAULT_GROUP_VARS_DIST = 4
 DEFAULT_MAX_GROUP_DISTANCE = 0.2
 DEFAULT_TRIM = False
 DEFAULT_ANCHORS = 0
+DEFAULT_REQUIRE_END_TO_END_ALIGNMENT = False
 NON_PARENTAL_GROUP_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 def get_name(filename):
@@ -323,6 +324,19 @@ def check_data(samples):
         # if null, fill with default
         if row['include_non_parental'] is None or pd.isnull(row['include_non_parental']):
             samples.loc[i, 'include_non_parental'] = DEFAULT_INCLUDE_NON
+
+    if 'require_end_to_end_alignment' not in samples.columns:
+        samples['require_end_to_end_alignment'] = [DEFAULT_REQUIRE_END_TO_END_ALIGNMENT] * len(samples)
+
+    for i, row in samples.iterrows():
+        value = row['require_end_to_end_alignment']
+        if not (value is True or value is False or value is None or pd.isnull(value)):
+            raise ValueError(
+                "Column 'require_end_to_end_alignment' must be True, False or omitted: "
+                f"found value {value} in row {i}"
+            )
+        if value is None or pd.isnull(value):
+            samples.loc[i, 'require_end_to_end_alignment'] = DEFAULT_REQUIRE_END_TO_END_ALIGNMENT
 
     # check if group_vars is specified - otherwise fill with default
     if 'group_vars' not in samples.columns:

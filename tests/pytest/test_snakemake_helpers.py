@@ -15,6 +15,7 @@ from aavolve.snakemake_helpers import (
     get_column_by_sample,
     get_dmat_input,
     get_linked_adapters_for_sample,
+    get_must_start_before_end_after,
     get_parents,
     get_reads,
     get_reads_for_align,
@@ -523,4 +524,55 @@ class TestGetAnchorSeed:
         
         # Last part should be numeric (anchor length)
         assert parts[-1].isdigit(), f"Expected last part of seed to be numeric, got {parts[-1]}"
+
+
+class TestMustStartBeforeEndAfter:
+    def test_end_to_end_enabled_always_full_reference(self, tmp_path):
+        first_last = tmp_path / "first_last.txt"
+        first_last.write_text("10\n200\n")
+        n_parents = tmp_path / "n_parents.txt"
+        n_parents.write_text("5\n")
+
+        assert get_must_start_before_end_after(
+            first_last_file=str(first_last),
+            n_parents_file=str(n_parents),
+            require_end_to_end_alignment=True,
+        ) == (0, -1)
+
+    def test_one_parent_always_full_reference(self, tmp_path):
+        first_last = tmp_path / "first_last.txt"
+        first_last.write_text("10\n200\n")
+        n_parents = tmp_path / "n_parents.txt"
+        n_parents.write_text("1\n")
+
+        assert get_must_start_before_end_after(
+            first_last_file=str(first_last),
+            n_parents_file=str(n_parents),
+            require_end_to_end_alignment=False,
+        ) == (0, -1)
+
+    def test_multi_parent_uses_first_last_when_not_end_to_end(self, tmp_path):
+        first_last = tmp_path / "first_last.txt"
+        first_last.write_text("12\n345\n")
+        n_parents = tmp_path / "n_parents.txt"
+        n_parents.write_text("3\n")
+
+        assert get_must_start_before_end_after(
+            first_last_file=str(first_last),
+            n_parents_file=str(n_parents),
+            require_end_to_end_alignment=False,
+        ) == (12, 345)
+
+    def test_multi_parent_missing_first_last_raises(self, tmp_path):
+        first_last = tmp_path / "first_last.txt"
+        first_last.write_text("12\n")
+        n_parents = tmp_path / "n_parents.txt"
+        n_parents.write_text("3\n")
+
+        with pytest.raises(ValueError):
+            get_must_start_before_end_after(
+                first_last_file=str(first_last),
+                n_parents_file=str(n_parents),
+                require_end_to_end_alignment=False,
+            )
         

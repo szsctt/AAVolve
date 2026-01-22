@@ -18,6 +18,7 @@ from aavolve.get_samples import (
     REQUIRED_COLUMNS,
     SEQ_TECHS,
     DEFAULT_ANCHORS,
+    DEFAULT_REQUIRE_END_TO_END_ALIGNMENT,
 )
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
@@ -836,6 +837,7 @@ class TestGetSamples:
         expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
         expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
         expected_samples['anchors'] = DEFAULT_ANCHORS
+        expected_samples['require_end_to_end_alignment'] = DEFAULT_REQUIRE_END_TO_END_ALIGNMENT
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -868,6 +870,7 @@ class TestGetSamples:
             expected_samples['group_vars_dist'] = DEFAULT_GROUP_VARS_DIST
             expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
             expected_samples['anchors'] = DEFAULT_ANCHORS
+            expected_samples['require_end_to_end_alignment'] = DEFAULT_REQUIRE_END_TO_END_ALIGNMENT
 
             # pass in both file and config
             config['samples'] = f.name

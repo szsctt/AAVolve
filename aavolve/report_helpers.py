@@ -9,6 +9,22 @@ import hashlib
 
 from aavolve.utils import MAX_SEQS
 
+def display_warning_file(path, title="Warning"):
+    if path is None or path == "":
+        return
+    if not os.path.exists(path):
+        return
+    with open(path, "rt") as handle:
+        text = handle.read().strip()
+    if not text:
+        return
+    try:
+        from IPython.display import Markdown, display
+    except Exception:
+        print(f"{title}: {text}")
+        return
+    display(Markdown(f"> **{title}**  \n" + text.replace("\n", "  \n")))
+
 #### counts of reads ####
 
 def import_read_count_data(df_file, seq_type):

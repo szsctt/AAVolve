@@ -4,6 +4,7 @@ from aavolve.snakemake_helpers import (
     get_parents,
     get_reference_for_align,
     fill_parents,
+    get_must_start_before_end_after,
 )
 
 # first, get variants from the parents
@@ -94,28 +95,31 @@ rule extract_variants_reads:
     wildcard_constraints:
         sample = "|".join(samples.sample_name)
     params:
-        anchor_length = lambda wildcards: get_anchor_length(wildcards, samples)
+        anchor_length = lambda wildcards: get_anchor_length(wildcards, samples),
+        require_end_to_end_alignment = lambda wildcards: get_column_by_sample(wildcards, samples, "require_end_to_end_alignment"),
+        must_start_before = lambda wildcards, input: get_must_start_before_end_after(
+            first_last_file=str(input.first_last),
+            n_parents_file=str(input.n_parents),
+            require_end_to_end_alignment=bool(get_column_by_sample(wildcards, samples, "require_end_to_end_alignment")),
+        )[0],
+        must_end_after = lambda wildcards, input: get_must_start_before_end_after(
+            first_last_file=str(input.first_last),
+            n_parents_file=str(input.n_parents),
+            require_end_to_end_alignment=bool(get_column_by_sample(wildcards, samples, "require_end_to_end_alignment")),
+        )[1],
     log:
         "logs/extract_variants_reads/{sample}.log"
     shell:
         """
-        NPAR=$(cat {input.n_parents})
-        if [ $NPAR -eq 1 ]; then
-            FIRST=0
-            LAST=-1
-        else
-            FIRST=$(sed -n 1p {input.first_last})
-            LAST=$(sed -n 2p {input.first_last})
-        fi
-        echo "For $NPAR parents, using first $FIRST and last $LAST as start and end."
+        echo "Using must_start_before={params.must_start_before} and must_end_after={params.must_end_after} (require_end_to_end_alignment={params.require_end_to_end_alignment})."
 
         python3 -m aavolve.extract_features_from_sam \
             -i {input.aln} \
             -r {input.ref} \
             -o {output.var} \
             -O {output.read_ids} \
-            --must-start-before $FIRST \
-            --must-end-after $LAST \
+            --must-start-before {params.must_start_before} \
+            --must-end-after {params.must_end_after} \
             --anchor-length {params.anchor_length}
         """
 
