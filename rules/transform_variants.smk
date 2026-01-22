@@ -335,7 +335,7 @@ rule report:
     params:
         seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook),
-        report_dir= lambda wildcards, output: os.path.dirname(output.report),
+        report_dir = lambda wildcards, output: os.path.dirname(output.report),
     shell:
         """
         pwd

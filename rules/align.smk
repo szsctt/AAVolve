@@ -12,6 +12,9 @@ from aavolve.snakemake_helpers import (
     minimap2_params_with_default,
 )
 
+
+MSA_SEQS = 50
+
 rule generate_anchor_sequences:
     input:
         inputs_ok="out/qc/input-checks/_all.ok"
@@ -116,7 +119,7 @@ rule qc_trimming_msa:
             --reference {input.reference} \
             --trimmed {input.trimmed} \
             --output {output.msa} \
-            --max-seqs 200 \
+            --max-seqs {MSA_SEQS} \
             --threads {threads} \
             2> {log}
         """
@@ -141,7 +144,7 @@ rule qc_pretrim_msa:
             --reference {input.reference} \
             --reads {input.reads} \
             --output {output.msa} \
-            --max-seqs 200 \
+            --max-seqs {MSA_SEQS} \
             --threads {threads} \
             2> {log}
         """
