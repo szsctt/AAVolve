@@ -34,6 +34,50 @@ def _clean_record(record, new_id: str):
     return record
 
 
+def write_reference(
+    *,
+    reference_path: str,
+    output_fasta_path: str,
+) -> int:
+    with open_maybe_gzip(reference_path, "rt") as ref_handle:
+        ref_records = list(SeqIO.parse(ref_handle, "fasta"))
+    if not ref_records:
+        raise ValueError(f"No reference sequences found in {reference_path!r}")
+
+    with open(output_fasta_path, "wt") as out_handle:
+        for record in ref_records:
+            record_id = record.id
+            SeqIO.write(_clean_record(record, f"ref__{record_id}"), out_handle, "fasta")
+
+    return len(ref_records)
+
+
+def write_reads(
+    *,
+    reads_path: str,
+    output_fasta_path: str,
+    max_reads: int = 200,
+) -> int:
+    if max_reads < 0:
+        raise ValueError(f"max_reads must be >= 0 (got {max_reads})")
+
+    reads_format = detect_seq_format(reads_path)
+    total_written = 0
+    with open(output_fasta_path, "wt") as out_handle:
+        with open_maybe_gzip(reads_path, "rt") as reads_handle:
+            for index, record in enumerate(SeqIO.parse(reads_handle, reads_format)):
+                if index >= max_reads:
+                    break
+                record_id = record.id
+                SeqIO.write(
+                    _clean_record(record, f"read{index+1:03d}__{record_id}"),
+                    out_handle,
+                    "fasta",
+                )
+                total_written += 1
+    return total_written
+
+
 def write_reference_and_reads(
     *,
     reference_path: str,
@@ -80,6 +124,21 @@ def run_mafft(*, input_fasta: str, output_fasta: str, threads: int = 1) -> None:
         subprocess.run(command, check=True, stdout=out_handle)
 
 
+def run_mafft_add(
+    *,
+    reference_alignment_fasta: str,
+    reads_fasta: str,
+    output_fasta: str,
+    threads: int = 1,
+) -> None:
+    if threads < 1:
+        raise ValueError(f"threads must be >= 1 (got {threads})")
+
+    command = ["mafft", "--thread", str(threads), "--add", reads_fasta, reference_alignment_fasta]
+    with open(output_fasta, "wt") as out_handle:
+        subprocess.run(command, check=True, stdout=out_handle)
+
+
 def build_msa(
     *,
     reference_path: str,
@@ -90,22 +149,39 @@ def build_msa(
 ) -> None:
     os.makedirs(os.path.dirname(output_msa_path) or ".", exist_ok=True)
 
-    with tempfile.NamedTemporaryFile(mode="wt", suffix=".fasta", delete=False) as combined_handle:
-        combined_path = combined_handle.name
+    with tempfile.NamedTemporaryFile(mode="wt", suffix=".fasta", delete=False) as reference_handle:
+        reference_fasta = reference_handle.name
+    with tempfile.NamedTemporaryFile(mode="wt", suffix=".fasta", delete=False) as reads_handle:
+        reads_fasta = reads_handle.name
+    aligned_reference_fasta = None
 
     try:
-        write_reference_and_reads(
-            reference_path=reference_path,
-            reads_path=reads_path,
-            output_fasta_path=combined_path,
-            max_reads=max_reads,
+        reference_count = write_reference(reference_path=reference_path, output_fasta_path=reference_fasta)
+        reads_count = write_reads(reads_path=reads_path, output_fasta_path=reads_fasta, max_reads=max_reads)
+
+        if reads_count == 0:
+            run_mafft(input_fasta=reference_fasta, output_fasta=output_msa_path, threads=threads)
+            return
+
+        if reference_count > 1:
+            with tempfile.NamedTemporaryFile(mode="wt", suffix=".fasta", delete=False) as aligned_reference_handle:
+                aligned_reference_fasta = aligned_reference_handle.name
+            run_mafft(input_fasta=reference_fasta, output_fasta=aligned_reference_fasta, threads=threads)
+
+        run_mafft_add(
+            reference_alignment_fasta=aligned_reference_fasta or reference_fasta,
+            reads_fasta=reads_fasta,
+            output_fasta=output_msa_path,
+            threads=threads,
         )
-        run_mafft(input_fasta=combined_path, output_fasta=output_msa_path, threads=threads)
     finally:
-        try:
-            os.remove(combined_path)
-        except OSError:
-            pass # give up if we can't remove temp file
+        for path in (reference_fasta, reads_fasta, aligned_reference_fasta):
+            if not path:
+                continue
+            try:
+                os.remove(path)
+            except OSError:
+                pass  # give up if we can't remove temp file
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
