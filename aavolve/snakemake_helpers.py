@@ -161,6 +161,68 @@ def build_group_report_targets(samples_df):
     return input_validation_map, input_validation_samples, group_report_targets
 
 
+def build_non_parental_variant_group_maps(samples_df, input_validation_samples):
+    """Return maps needed to share non-parental variants within parent/reference groups.
+
+    This reuses the group identifiers already computed for input validation / group reports
+    by consuming the ``input_validation_samples`` mapping produced by
+    ``build_input_validation_targets`` instead of recomputing pair IDs.
+
+    Args:
+        samples_df: samples DataFrame (must include columns sample_name, include_non_parental).
+        input_validation_samples: dict[pair_id] -> list[sample_name] for all samples in each group
+            (output of ``build_input_validation_targets``).
+
+    Returns:
+        sample_to_pair_id: dict mapping sample_name -> pair_id for all samples
+        pair_id_to_samples: dict mapping pair_id -> list[sample_name] for samples with include_non_parental=True
+    """
+
+    include_non_parental_by_sample = {
+        str(sample_name): bool(include_non_parental)
+        for sample_name, include_non_parental in zip(samples_df.sample_name, samples_df.include_non_parental)
+    }
+
+    sample_to_pair_id = {}
+    pair_id_to_samples = {}
+
+    for pair_id, sample_names in input_validation_samples.items():
+        for sample_name in sample_names:
+            sample_name = str(sample_name)
+            sample_to_pair_id[sample_name] = pair_id
+            if include_non_parental_by_sample.get(sample_name, False):
+                pair_id_to_samples.setdefault(pair_id, []).append(sample_name)
+
+    return sample_to_pair_id, pair_id_to_samples
+
+
+def get_non_parental_high_freq_variants_for_sample(
+    wildcards,
+    samples_df,
+    sample_to_pair_id,
+    non_parental_variant_groups,
+):
+    """Return the appropriate non-parental variant file for a sample.
+
+    If a sample has include_non_parental=True and shares (parent_file, reference_file)
+    with other include_non_parental samples, return the combined non-parental variants
+    across the group; otherwise return the per-sample file.
+    """
+
+    include_non_parental = bool(
+        samples_df.loc[samples_df.sample_name == wildcards.sample, "include_non_parental"].iloc[0]
+    )
+    if not include_non_parental:
+        return f"out/variants/frequency/{wildcards.sample}_high.tsv.gz"
+
+    pair_id = sample_to_pair_id[wildcards.sample]
+    group_samples = non_parental_variant_groups.get(pair_id, [])
+    if len(group_samples) <= 1:
+        return f"out/variants/frequency/{wildcards.sample}_high.tsv.gz"
+
+    return f"out/variants/frequency/groups/{pair_id}_high.tsv.gz"
+
+
 def get_anchor_sequences_path(wildcards):
     return f"out/anchors/{wildcards.sample}.fasta"
 

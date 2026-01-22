@@ -73,7 +73,7 @@ sample_name,parent_name,reference_name,seq_tech,min_reps,read_file,parent_file,r
 - `reference_file` (optional): The path to the fasta file containing one of the parental sequences to be used as a reference for alingment (default: the first parental sequence)
 - `splint_file` (required for RCA data): The path to the fasta file containing the splint used for circularization during RCA
 - `non_parental_freq` (optional): Identify non-parental variants seen in more than this fraction of the reads (default: 0.2)
-- `include_non_parental`(optional): Include non-parental variants if they are seen in more than `non_parental_freq` reads (default: False)
+- `include_non_parental`(optional): Include non-parental variants if they are seen in more than `non_parental_freq` reads. When analysing multiple samples that share the same `parent_file` and `reference_file`, AAVolve will combine the high-frequency non-parental variants across those samples (each using its own `non_parental_freq`) and include the union in all samples in the group. (default: False)
 - `group_vars` (optional): During assignment of parents, group variants and assign parent with lowest hamming distance to read.  If False, variants are considered individually (default: True)
 - `group_vars_dist` (optional): When grouping variants, combine non-adjacent variants that are at most this far apart (defult: 4)
 - `max_group_distance` (optional): When grouping variants, assign a parent if there are at most this fraction of the variants that differ between a parent and the read. For example, in a group of 6 variants, if this parameter is set to 0.2, a parent that has one variant that differs from the read will still be assigned to the group.  Note that if `group_vars` is `False`, variants must match a parent otherwise they will be set to `NA`, regardless of the value for this parameter (default: 0.2).
@@ -142,5 +142,4 @@ Variants are positions in the read where parents or reads differ in their sequen
 -  Observed frequency of parents at each variant position: `out/prarents/freqs/<sample_name>_assigned-parents.tsv.gz`
 -  Variants in each read (sequence): `out/pivot/<sample_name>_seq.tsv.gz`
 -  Assigned parents at each variant position in each read: `out/parents/assigned/<sample_name>_assigned-parents.tsv.gz`
-
 

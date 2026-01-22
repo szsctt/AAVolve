@@ -1,7 +1,11 @@
 import re
 
 from aavolve.get_samples import get_samples
-from aavolve.snakemake_helpers import build_group_report_targets, build_input_validation_targets
+from aavolve.snakemake_helpers import (
+    build_group_report_targets,
+    build_input_validation_targets,
+    build_non_parental_variant_group_maps,
+)
 from aavolve.utils import normalize_names
 
 
@@ -30,6 +34,13 @@ for name, seq_tech in zip(samples.sample_name, samples.seq_tech):
 # Validate inputs once per unique (parent_file, reference_file) combination.
 input_validation_map, input_validation_samples, input_validation_targets = build_input_validation_targets(samples)
 _, _, group_report_targets = build_group_report_targets(samples)
+
+sample_to_pair_id, non_parental_variant_groups = build_non_parental_variant_group_maps(
+    samples, input_validation_samples
+)
+non_parental_variant_group_ids = sorted(
+    pair_id for pair_id, group_samples in non_parental_variant_groups.items() if len(group_samples) > 1
+)
 
 trim_qc_targets = []
 if "trim" in samples.columns:
