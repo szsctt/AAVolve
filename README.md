@@ -100,6 +100,8 @@ Note that if the data is outside of the AAVolve directory, you will also need to
 
 C3POa often leaves pieces of the splint sequence at the ends of the consensus reads. Use trimming to remove these - it's useful to first run without trimming and do a multiple sequence alignment of the highest-count sequences with some of the parents to identify the adapter sequences to trim.
 
+To help determine if trimming is necessary, a multiple sequence alignment is created containing the reference sequence and the first 200 reads in `out/qc/trimming/<sample_name>.pretrim.mafft.fasta`. If there are extra bases at the start and end of the reads (before and after the reference sequence), it may be beneficial to trim these. Use the first 10 or so bases before and after the reference sequence as the trimming sequences. If trimming is enabled, a post-trimming MSA is also created at `out/qc/trimming/<sample_name>.mafft.fasta` to confirm trimming worked as expected.
+
 #### Anchors
 
 Short random anchors can stabilise alignments for highly similar parental sequences. When `anchors` is set to a positive integer, AAVolve generates reproducible 5' and 3' anchor sequences of the specified length (stored in `out/anchors/{sample}.fasta`) and applies them to both the reads and the reference prior to alignment. Variant positions are reported relative to the original (unanchored) reference coordinates, and anchored FASTA/FASTQ files are written to `out/anchors/reads/` and `out/anchors/references/`.
@@ -111,8 +113,10 @@ AAVolve produces several outputs, which will appear in the `out` folder and may 
 
 #### Overview
 
-- Summary of results: `out/qc/<sample_name>_report.html`
+- Summary of results: `out/reports/sample_reports/<sample_name>_report.html`
+- Summary of results grouped by parent/reference: `out/reports/group_reports/<pair_id>_report.html`
 - Number of reads at each stage of processing: `out/qc/<sample_name>_read-counts.tsv`
+- Trimming QC MSAs: `out/qc/trimming/<sample_name>.pretrim.mafft.fasta` and (if trimming enabled) `out/qc/trimming/<sample_name>.mafft.fasta`
 - Generated anchor sequences: `out/anchors/<sample_name>.fasta`
 - Anchored reads and references used for alignment (when anchors enabled): `out/anchors/reads/<sample_name>.*`, `out/anchors/references/<sample_name>.fasta`
 
@@ -138,6 +142,5 @@ Variants are positions in the read where parents or reads differ in their sequen
 -  Observed frequency of parents at each variant position: `out/prarents/freqs/<sample_name>_assigned-parents.tsv.gz`
 -  Variants in each read (sequence): `out/pivot/<sample_name>_seq.tsv.gz`
 -  Assigned parents at each variant position in each read: `out/parents/assigned/<sample_name>_assigned-parents.tsv.gz`
-
 
 

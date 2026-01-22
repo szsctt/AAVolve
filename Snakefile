@@ -31,11 +31,23 @@ for name, seq_tech in zip(samples.sample_name, samples.seq_tech):
 input_validation_map, input_validation_samples, input_validation_targets = build_input_validation_targets(samples)
 _, _, group_report_targets = build_group_report_targets(samples)
 
+trim_qc_targets = []
+if "trim" in samples.columns:
+    trim_qc_targets = [
+        f"out/qc/trimming/{sample}.mafft.fasta"
+        for sample, trim in zip(samples.sample_name, samples.trim)
+        if isinstance(trim, bool) and trim
+    ]
+
+pretrim_qc_targets = [f"out/qc/trimming/{sample}.pretrim.mafft.fasta" for sample in samples.sample_name]
+
 rule all:
     input: 
         consensus,
         input_validation_targets,
         group_report_targets,
+        pretrim_qc_targets,
+        trim_qc_targets,
         expand("out/aligned/{sample}.bam", sample=samples.sample_name),
         expand("out/aligned/{sample}.bam", sample=samples.parent_name),
         expand("out/variants/reads/{sample}.tsv.gz", sample=samples.sample_name),
@@ -48,7 +60,7 @@ rule all:
         expand("out/corrected/counts/{sample}_{seqtype}-seq-counts.tsv.gz", sample=samples.sample_name, seqtype = ("aa", "nt")),
         expand("out/corrected/dmat/{sample}_{subset}_{seqtype}-seq.tsv.gz", sample=samples.sample_name, subset = ("random", "first"), seqtype = ("aa", "nt")),
         expand("out/qc/{sample}_read-counts.tsv", sample=samples.sample_name),
-        expand("out/qc/{sample}_report.html", sample=samples.sample_name),
+        expand("out/reports/sample_reports/{sample}_report.html", sample=samples.sample_name),
 
 include: 'rules/consensus.smk'
 include: 'rules/check_inputs.smk'

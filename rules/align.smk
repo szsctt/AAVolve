@@ -12,6 +12,9 @@ from aavolve.snakemake_helpers import (
     minimap2_params_with_default,
 )
 
+
+MSA_SEQS = 50
+
 rule generate_anchor_sequences:
     input:
         inputs_ok="out/qc/input-checks/_all.ok"
@@ -71,7 +74,6 @@ rule anchor_reference:
             --anchors {input.anchors}
         """
 
-# map to one of the parental references.  The choice of reference is arbitrary
 rule trim_reads:
     """
     Trim adapters from reads using cutadapt when configured (trim=True).
@@ -97,7 +99,58 @@ rule trim_reads:
         ) 2> {log}
         """
 
+rule qc_trimming_msa:
+    """
+    QC adapter trimming by aligning the reference plus the first 200 trimmed reads.
+    """
+    input:
+        inputs_ok="out/qc/input-checks/_all.ok",
+        trimmed="out/trimmed/{sample}.trimmed.gz",
+        reference=lambda wildcards: get_reference(wildcards, samples),
+    output:
+        msa="out/qc/trimming/{sample}.mafft.fasta",
+    threads: 4
+    log:
+        "logs/qc_trimming_msa/{sample}.log"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m aavolve.qc_trimming_msa \
+            --reference {input.reference} \
+            --trimmed {input.trimmed} \
+            --output {output.msa} \
+            --max-seqs {MSA_SEQS} \
+            --threads {threads} \
+            2> {log}
+        """
 
+rule qc_pretrim_msa:
+    """
+    QC whether reads need trimming by aligning the reference plus the first 200 untrimmed reads.
+    """
+    input:
+        inputs_ok="out/qc/input-checks/_all.ok",
+        reads=lambda wildcards: get_reads(wildcards, samples),
+        reference=lambda wildcards: get_reference(wildcards, samples),
+    output:
+        msa="out/qc/trimming/{sample}.pretrim.mafft.fasta",
+    threads: 4
+    log:
+        "logs/qc_pretrim_msa/{sample}.log"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m aavolve.qc_trimming_msa \
+            --reference {input.reference} \
+            --reads {input.reads} \
+            --output {output.msa} \
+            --max-seqs {MSA_SEQS} \
+            --threads {threads} \
+            2> {log}
+        """
+
+
+# map to one of the parental references.  The choice of reference is arbitrary
 rule align:
     input:
         inputs_ok="out/qc/input-checks/_all.ok",

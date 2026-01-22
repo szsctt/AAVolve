@@ -297,14 +297,15 @@ rule report:
         dmat_aa_random = expand(rules.dmat.output.dmat, seq_type="aa-seq", subset="random", allow_missing=True),
         report_template = lambda wildcards: os.path.join(workflow.basedir, "aavolve/report.ipynb")
     output:
-        report = "out/qc/{sample}_report.html",
-        tmp_notebook = "out/qc/{sample}_report.ipynb",
+        report = "out/reports/sample_reports/{sample}_report.html",
+        tmp_notebook = temp("out/reports/sample_reports/{sample}_report.ipynb"),
     log:
         "logs/report/{sample}.log"
     container: "docker://szsctt/lr_pybio:py310"
     params:
         seq_tech = lambda wildcards: get_column_by_sample(wildcards, samples, "seq_tech"),
-        report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook)
+        report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook),
+        report_dir = lambda wildcards, output: os.path.dirname(output.report),
     shell:
         """
         pwd
@@ -319,6 +320,6 @@ rule report:
             -p dmat_nt_random {input.dmat_nt_random} \
             -p dmat_aa_random {input.dmat_aa_random}
 
-        cd out/qc
+        cd {params.report_dir}
         quarto render {params.report_basename}
         """
