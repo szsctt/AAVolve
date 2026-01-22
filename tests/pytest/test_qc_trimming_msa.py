@@ -50,7 +50,7 @@ def test_write_reference_and_reads_limits_and_prefixes(tmp_path):
     combined = tmp_path / "combined.fa"
     written = write_reference_and_reads(
         reference_path=str(reference),
-        trimmed_path=str(trimmed),
+        reads_path=str(trimmed),
         output_fasta_path=str(combined),
         max_reads=2,
     )
@@ -99,7 +99,7 @@ def test_build_msa_writes_output(monkeypatch, tmp_path):
 
     build_msa(
         reference_path=str(reference),
-        trimmed_path=str(trimmed),
+        reads_path=str(trimmed),
         output_msa_path=str(output),
         max_reads=1,
         threads=2,
