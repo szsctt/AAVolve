@@ -94,10 +94,10 @@ To provide this file to `snakemake`:
 snakemake --use-apptainer --cores 1 --config samples=<path to csv>
 ```
 
-If you have issues during rendering ipynb notebookes, try adding `--apptainer-args '--cleanenv'`.
+If you have issues during rendering ipynb notebookes, try adding `--apptainer-args="--cleanenv"` (or `--singularity-args="--cleanenv"`).
 
 Note that if the data is outside of the AAVolve directory, you will also need to add a bind-mount to the apptainer args:
-`--apptainer-args '--cleanenv -B /path/to/data'`
+`--apptainer-args="--cleanenv -B /path/to/data"`
 
 #### Trimming
 
