@@ -79,7 +79,7 @@ rule group_report:
     container: "docker://szsctt/lr_pybio:py310"
     params:
         report_basename=lambda wildcards, output: output.tmp_notebook.split('/')[-1],
-        report_dir= lambda wildcards, output: os.path.dirname(output.report),
+        report_dir = lambda wildcards, output: os.path.dirname(output.report),
     shell:
         """
         set -euo pipefail

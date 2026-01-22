@@ -37,14 +37,14 @@ def _clean_record(record, new_id: str):
 def write_reference_and_reads(
     *,
     reference_path: str,
-    trimmed_path: str,
+    reads_path: str,
     output_fasta_path: str,
     max_reads: int = 200,
 ) -> int:
     if max_reads < 0:
         raise ValueError(f"max_reads must be >= 0 (got {max_reads})")
 
-    trimmed_format = detect_seq_format(trimmed_path)
+    trimmed_format = detect_seq_format(reads_path)
 
     with open_maybe_gzip(reference_path, "rt") as ref_handle:
         ref_records = list(SeqIO.parse(ref_handle, "fasta"))
@@ -57,7 +57,7 @@ def write_reference_and_reads(
             SeqIO.write(_clean_record(record, f"ref__{record.id}"), out_handle, "fasta")
             total_written += 1
 
-        with open_maybe_gzip(trimmed_path, "rt") as trimmed_handle:
+        with open_maybe_gzip(reads_path, "rt") as trimmed_handle:
             for index, record in enumerate(SeqIO.parse(trimmed_handle, trimmed_format)):
                 if index >= max_reads:
                     break
@@ -83,7 +83,7 @@ def run_mafft(*, input_fasta: str, output_fasta: str, threads: int = 1) -> None:
 def build_msa(
     *,
     reference_path: str,
-    trimmed_path: str,
+    reads_path: str,
     output_msa_path: str,
     max_reads: int = 200,
     threads: int = 1,
@@ -96,7 +96,7 @@ def build_msa(
     try:
         write_reference_and_reads(
             reference_path=reference_path,
-            trimmed_path=trimmed_path,
+            reads_path=reads_path,
             output_fasta_path=combined_path,
             max_reads=max_reads,
         )
@@ -105,7 +105,7 @@ def build_msa(
         try:
             os.remove(combined_path)
         except OSError:
-            pass
+            pass # give up if we can't remove temp file
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
@@ -130,7 +130,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     reads_path = args.reads or args.trimmed
     build_msa(
         reference_path=args.reference,
-        trimmed_path=reads_path,
+        reads_path=reads_path,
         output_msa_path=args.output,
         max_reads=args.max_seqs,
         threads=args.threads,

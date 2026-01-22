@@ -1,6 +1,5 @@
 import gzip
 import subprocess
-import tempfile
 
 import pytest
 from Bio import SeqIO
