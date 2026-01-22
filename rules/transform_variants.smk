@@ -38,17 +38,18 @@ rule variant_frequency:
 rule combine_non_parental_variants_group:
     """
     Combine high-frequency non-parental variants across samples that share the same
-    (parent_file, reference_file) pair and have include_non_parental=True.
+    (parent_file, reference_file) pair and have include_non_parental=True, and (if configured)
+    share the same non_parental_group.
     """
     input:
         variants=lambda wildcards: expand(
             "out/variants/frequency/{sample}_high.tsv.gz",
-            sample=non_parental_variant_groups[wildcards.pair_id],
+            sample=non_parental_variant_groups[wildcards.group_id],
         ),
     output:
-        combined="out/variants/frequency/groups/{pair_id}_high.tsv.gz",
+        combined="out/variants/frequency/groups/{group_id}_high.tsv.gz",
     log:
-        "logs/combine_non_parental_variants_group/{pair_id}.log"
+        "logs/combine_non_parental_variants_group/{group_id}.log"
     container: "docker://szsctt/lr_pybio:py310"
     shell:
         """
@@ -66,7 +67,7 @@ rule combine_variants:
         high_freq = lambda wildcards: get_non_parental_high_freq_variants_for_sample(
             wildcards,
             samples,
-            sample_to_pair_id,
+            sample_to_non_parental_group_id,
             non_parental_variant_groups,
         )
     output:

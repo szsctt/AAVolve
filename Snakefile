@@ -35,11 +35,11 @@ for name, seq_tech in zip(samples.sample_name, samples.seq_tech):
 input_validation_map, input_validation_samples, input_validation_targets = build_input_validation_targets(samples)
 _, _, group_report_targets = build_group_report_targets(samples)
 
-sample_to_pair_id, non_parental_variant_groups = build_non_parental_variant_group_maps(
+sample_to_non_parental_group_id, non_parental_variant_groups = build_non_parental_variant_group_maps(
     samples, input_validation_samples
 )
 non_parental_variant_group_ids = sorted(
-    pair_id for pair_id, group_samples in non_parental_variant_groups.items() if len(group_samples) > 1
+    group_id for group_id, group_samples in non_parental_variant_groups.items() if len(group_samples) > 1
 )
 
 trim_qc_targets = []

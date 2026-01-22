@@ -102,3 +102,27 @@ def test_build_non_parental_variant_group_maps(tmp_path):
 
     assert sample_to_pair_id["S1"] == sample_to_pair_id["S2"] == sample_to_pair_id["S3"] == "pair"
     assert list(group_map.values()) == [["S1", "S2"]]
+
+
+def test_build_non_parental_variant_group_maps_respects_non_parental_group(tmp_path):
+    samples = pd.DataFrame(
+        [
+            {
+                "sample_name": "S1",
+                "include_non_parental": True,
+                "non_parental_group": "g1",
+            },
+            {
+                "sample_name": "S2",
+                "include_non_parental": True,
+                "non_parental_group": "g2",
+            },
+        ]
+    )
+
+    input_validation_samples = {"pair": ["S1", "S2"]}
+    sample_to_group_id, group_map = build_non_parental_variant_group_maps(samples, input_validation_samples)
+
+    assert sample_to_group_id["S1"] == "pair__g1"
+    assert sample_to_group_id["S2"] == "pair__g2"
+    assert group_map == {"pair__g1": ["S1"], "pair__g2": ["S2"]}
