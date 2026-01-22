@@ -1,6 +1,7 @@
 import os
 
 from aavolve.snakemake_helpers import get_column_by_sample, is_fastq, get_reads_for_counting, format_input_reads, get_dmat_input
+from aavolve.snakemake_helpers import get_non_parental_high_freq_variants_for_sample
 from aavolve.utils import MAX_SEQS
 
 # get frequency of each variant
@@ -34,12 +35,41 @@ rule variant_frequency:
         python3 -m aavolve.variant_frequency_long {params}
         """
 
+rule combine_non_parental_variants_group:
+    """
+    Combine high-frequency non-parental variants across samples that share the same
+    (parent_file, reference_file) pair and have include_non_parental=True, and (if configured)
+    share the same non_parental_group.
+    """
+    input:
+        variants=lambda wildcards: expand(
+            "out/variants/frequency/{sample}_high.tsv.gz",
+            sample=non_parental_variant_groups[wildcards.group_id],
+        ),
+    output:
+        combined="out/variants/frequency/groups/{group_id}_high.tsv.gz",
+    log:
+        "logs/combine_non_parental_variants_group/{group_id}.log"
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        python3 -m aavolve.combine_non_parental_variants \
+            --output {output.combined} \
+            {input.variants} \
+            2> {log}
+        """
+
 # combine parental and high-frequency non-parental variants
 rule combine_variants:
     input:
         parents = lambda wildcards: (expand("out/variants/parents/{parent}.tsv.gz", 
                                                                     parent=get_column_by_sample(wildcards, samples, "parent_name"))),
-        high_freq = rules.variant_frequency.output.high_freq
+        high_freq = lambda wildcards: get_non_parental_high_freq_variants_for_sample(
+            wildcards,
+            samples,
+            sample_to_non_parental_group_id,
+            non_parental_variant_groups,
+        )
     output:
         combined = "out/variants/combined/{sample}.tsv.gz"
     wildcard_constraints:

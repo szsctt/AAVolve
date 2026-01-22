@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import re
 
 PARENTDIR = 'out/references/parents'
 os.makedirs(PARENTDIR, exist_ok=True)
@@ -14,6 +15,7 @@ DEFAULT_GROUP_VARS_DIST = 4
 DEFAULT_MAX_GROUP_DISTANCE = 0.2
 DEFAULT_TRIM = False
 DEFAULT_ANCHORS = 0
+NON_PARENTAL_GROUP_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
@@ -382,6 +384,40 @@ def check_data(samples):
         parent_counts = parent_param_combos.groupby('parent_name').size().reset_index(name='count')
         if any(parent_counts['count'] > 1):
             raise ValueError("Each parent name (column 'parent_name') must always correspond to the same minimap2 parameters (column 'minimap2_params'). Found multiple minimap2 parameters for the same parent name.")
+
+    # optional non-parental variant sharing groups
+    # If specified, this allows defining sub-groups within parent/reference groups
+    # (e.g. to run the same read files with different non_parental_freq thresholds)
+    if "non_parental_group" in samples.columns:
+        def _coerce_group(value, idx):
+            if value is None or (isinstance(value, float) and pd.isnull(value)):
+                return None
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"Column 'non_parental_group' must be a string or empty. Found value {value!r} in row {idx}."
+                )
+            cleaned = value.strip()
+            if cleaned == "" or cleaned.lower() == "nan":
+                return None
+            if not NON_PARENTAL_GROUP_PATTERN.match(cleaned):
+                raise ValueError(
+                    "Column 'non_parental_group' must match pattern "
+                    f"{NON_PARENTAL_GROUP_PATTERN.pattern!r} (letters/numbers/underscore/dash). "
+                    f"Found value {value!r} in row {idx}."
+                )
+            return cleaned
+
+        samples["non_parental_group"] = [
+            _coerce_group(val, idx) for idx, val in enumerate(samples["non_parental_group"])
+        ]
+
+        for i, row in samples.iterrows():
+            if bool(row["include_non_parental"]) and row["non_parental_group"] is None:
+                raise ValueError(
+                    f"Sample '{row['sample_name']}' has include_non_parental=True but column "
+                    "'non_parental_group' is missing/empty. Set a group label to control "
+                    "which samples share non-parental variants."
+                )
 
 
     return samples

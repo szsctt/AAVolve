@@ -503,6 +503,36 @@ class TestCheckData:
         assert sample_df['adapter_5'][0] == 'AAA'
         assert sample_df['adapter_3'][0] == 'TTT'
 
+    def test_check_data_non_parental_group_required_when_column_present(self, sample_df):
+        sample_df["include_non_parental"] = True
+        sample_df["group_vars"] = False
+        sample_df["non_parental_group"] = None
+
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+
+        assert "include_non_parental=True" in str(error.value)
+        assert "non_parental_group" in str(error.value)
+
+    def test_check_data_non_parental_group_rejects_invalid_value(self, sample_df):
+        sample_df["include_non_parental"] = True
+        sample_df["group_vars"] = False
+        sample_df["non_parental_group"] = "bad/group"
+
+        with pytest.raises(ValueError) as error:
+            check_data(sample_df)
+
+        assert "non_parental_group" in str(error.value)
+        assert "letters/numbers/underscore/dash" in str(error.value)
+
+    def test_check_data_non_parental_group_accepts_valid_value(self, sample_df):
+        sample_df["include_non_parental"] = True
+        sample_df["group_vars"] = False
+        sample_df["non_parental_group"] = "round1"
+
+        checked = check_data(sample_df)
+        assert checked.loc[0, "non_parental_group"] == "round1"
+
     def test_check_data_np_cc_splint(self, config):
         """
         Check that an exception is raised if splint file is not specified for np-cc
