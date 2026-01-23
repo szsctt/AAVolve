@@ -7,42 +7,29 @@ def _samples_for_pair(pair_id: str):
     return sorted(input_validation_samples[pair_id])
 
 
-def _manifest_rows(pair_id: str):
-    parent_file, reference_file = input_validation_map[pair_id]
-    rows = []
+def _trimmed_samples_for_pair(pair_id: str):
+    trimmed = []
     for sample in _samples_for_pair(pair_id):
         wc = type("WC", (), {"sample": sample})
-        rows.append(
-            {
-                "sample": sample,
-                "seq_tech": get_column_by_sample(wc, samples, "seq_tech"),
-                "parent_file": parent_file,
-                "reference_file": reference_file,
-                "read_counts": f"out/qc/{sample}_read-counts.tsv",
-                "assigned_parents": f"out/parents/counts/{sample}_parent-counts.tsv.gz",
-                "parent_frequencies": f"out/parents/freqs/{sample}_assigned-parents_freq.tsv.gz",
-                "dmat_nt_first": f"out/corrected/dmat/{sample}_first_nt-seq.tsv.gz",
-                "dmat_aa_first": f"out/corrected/dmat/{sample}_first_aa-seq.tsv.gz",
-                "dmat_nt_random": f"out/corrected/dmat/{sample}_random_nt-seq.tsv.gz",
-                "dmat_aa_random": f"out/corrected/dmat/{sample}_random_aa-seq.tsv.gz",
-            }
-        )
-    return rows
+        if "trim" in samples.columns and bool(get_column_by_sample(wc, samples, "trim")):
+            trimmed.append(sample)
+    return trimmed
 
 
 rule group_manifest:
+    input:
+        samples_csv = lambda wildcards: config["samples"]
     output:
         manifest="out/reports/group_reports/{pair_id}_manifest.tsv",
-    run:
-        from pathlib import Path
-        rows = _manifest_rows(wildcards.pair_id)
-        import csv
-
-        Path(output.manifest).parent.mkdir(parents=True, exist_ok=True)
-        with open(output.manifest, "w", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()), delimiter="\t")
-            writer.writeheader()
-            writer.writerows(rows)
+    container: "docker://szsctt/lr_pybio:py310"
+    shell:
+        """
+        set -euo pipefail
+        python3 -m aavolve.write_group_manifest \
+            --samples-csv {input.samples_csv} \
+            --pair-id {wildcards.pair_id} \
+            --output {output.manifest}
+        """
 
 
 rule group_report:
@@ -52,11 +39,29 @@ rule group_report:
         read_counts=lambda wildcards: [
             f"out/qc/{s}_read-counts.tsv" for s in _samples_for_pair(wildcards.pair_id)
         ],
+        coverage_depth=lambda wildcards: [
+            f"out/qc/coverage/{s}_depth.tsv.gz" for s in _samples_for_pair(wildcards.pair_id)
+        ],
         assigned_parents=lambda wildcards: [
             f"out/parents/counts/{s}_parent-counts.tsv.gz" for s in _samples_for_pair(wildcards.pair_id)
         ],
         parent_frequencies=lambda wildcards: [
             f"out/parents/freqs/{s}_assigned-parents_freq.tsv.gz" for s in _samples_for_pair(wildcards.pair_id)
+        ],
+        variant_freq_all=lambda wildcards: [
+            f"out/variants/frequency/{s}_all.tsv.gz" for s in _samples_for_pair(wildcards.pair_id)
+        ],
+        parents_dropped_warning=lambda wildcards: [
+            f"out/qc/warnings/{s}_parents_dropped.txt" for s in _samples_for_pair(wildcards.pair_id)
+        ],
+        variant_window_warning=lambda wildcards: [
+            f"out/qc/warnings/{s}_non_parental_outside_window.txt" for s in _samples_for_pair(wildcards.pair_id)
+        ],
+        pretrim_msa=lambda wildcards: [
+            f"out/qc/trimming/{s}.pretrim.mafft.fasta" for s in _samples_for_pair(wildcards.pair_id)
+        ],
+        posttrim_msa=lambda wildcards: [
+            f"out/qc/trimming/{s}.mafft.fasta" for s in _trimmed_samples_for_pair(wildcards.pair_id)
         ],
         dmat_nt_first=lambda wildcards: [
             f"out/corrected/dmat/{s}_first_nt-seq.tsv.gz" for s in _samples_for_pair(wildcards.pair_id)
@@ -91,5 +96,6 @@ rule group_report:
             -p manifest {input.manifest}
 
         cd {params.report_dir}
+        unset QUARTO_DENO DENO
         quarto render {params.report_basename}
         """

@@ -223,6 +223,16 @@ def test_job_dependency_expansion(tmp_path, snakefile, np_only_config):
             f"Assign parents job should output 'out/parents/assigned/{sample_name}_assigned-parents.tsv.gz', got: {assign_outputs}"
 
 
+def test_group_manifest_depends_on_samples_csv(tmp_path, snakefile, np_only_config):
+    with DAGContext(snakefile, {"samples": str(np_only_config)}) as dag_ctx:
+        manifest_jobs = [j for j in dag_ctx.jobs if j.rule.name == "group_manifest"]
+        assert manifest_jobs, "Expected at least one group_manifest job in the DAG"
+        for job in manifest_jobs:
+            assert str(np_only_config) in {str(p) for p in job.input}, (
+                "group_manifest should depend on the samples CSV so it is regenerated when samples change"
+            )
+
+
 
 def test_consensus_rules_present(tmp_path, snakefile, samples_config):
     """Test that consensus-related rules are present for np-cc samples."""

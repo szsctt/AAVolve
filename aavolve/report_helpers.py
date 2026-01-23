@@ -8,6 +8,23 @@ import re
 import hashlib
 
 from aavolve.utils import MAX_SEQS
+from aavolve.utils import use_open
+
+def display_warning_file(path, title="Warning"):
+    if path is None or path == "":
+        return
+    if not os.path.exists(path):
+        return
+    with open(path, "rt") as handle:
+        text = handle.read().strip()
+    if not text:
+        return
+    try:
+        from IPython.display import Markdown, display
+    except Exception:
+        print(f"{title}: {text}")
+        return
+    display(Markdown(f"> **{title}**  \n" + text.replace("\n", "  \n")))
 
 #### counts of reads ####
 
@@ -89,6 +106,135 @@ def print_fraction_nt_reads_pass(df_file, seq_type):
 
     print(f'{pass_frac*100:.2f}%')
 
+def reads_passing_all_filters(df_file, seq_type):
+    df = import_read_count_data(df_file, seq_type)
+    row = df[df["File type"] == "Filtered non-parental variants"]
+    if len(row) != 1:
+        raise ValueError("Expected exactly one row for 'Filtered non-parental variants'")
+    count = int(row["Count"].iloc[0])
+    frac = float(row["Fraction of reads"].iloc[0])
+    return count, frac
+
+
+def print_reads_passing_all_filters(df_file, seq_type):
+    count, frac = reads_passing_all_filters(df_file, seq_type)
+    print(f"{count} ({frac*100:.2f}%)")
+
+
+def get_read_count(df_file, seq_type, file_type):
+    df = import_read_count_data(df_file, seq_type)
+    row = df[df["File type"] == file_type]
+    if len(row) != 1:
+        raise ValueError(f"Expected exactly one row for file type {file_type!r}")
+    return int(row["Count"].iloc[0])
+
+def grouping_drop_stats(read_counts_file, seq_type):
+    """
+    Summarise read drop-off at the pivot ("Filtered non-parental variants") stage.
+
+    This stage corresponds to dropping reads that contain at least one allele that
+    cannot be assigned to any parent (i.e. 'NA' in the pivoted parents table).
+    """
+    refcov = get_read_count(read_counts_file, seq_type, "Filtered by reference coverage")
+    pivoted = get_read_count(read_counts_file, seq_type, "Filtered non-parental variants")
+    dropped = max(0, int(refcov) - int(pivoted))
+    dropped_frac = (dropped / refcov) if refcov else 0.0
+    return {
+        "refcov_reads": int(refcov),
+        "pivoted_reads": int(pivoted),
+        "dropped_reads": int(dropped),
+        "dropped_fraction": float(dropped_frac),
+    }
+
+
+def _coerce_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n", "", "nan", "none"}:
+        return False
+    return bool(value)
+
+
+def _coerce_int(value, default: int) -> int:
+    try:
+        if value is None or (isinstance(value, float) and np.isnan(value)):
+            return default
+        text = str(value).strip()
+        if text.lower() in {"", "nan", "none"}:
+            return default
+        return int(float(text))
+    except Exception:
+        return default
+
+
+def _coerce_float(value, default: float) -> float:
+    try:
+        if value is None or (isinstance(value, float) and np.isnan(value)):
+            return default
+        text = str(value).strip()
+        if text.lower() in {"", "nan", "none"}:
+            return default
+        return float(text)
+    except Exception:
+        return default
+
+
+def variant_grouping_table(combined_variants_file, group_vars, group_vars_dist, max_group_distance):
+    """
+    Reconstruct the grouping used during pivoting (`pivot_variants_to_wide.py`).
+
+    Groups are formed on variant IDs (pos:type) using `make_var_groups`, and the
+    effective maximum allowed mismatches is `int(len(group) * max_distance_frac)`.
+    """
+    from aavolve.utils import get_parents, make_var_groups, sort_var_names
+
+    group_enabled = _coerce_bool(group_vars)
+    group_dist = _coerce_int(group_vars_dist, default=1)
+    max_dist_frac = _coerce_float(max_group_distance, default=0.0)
+    effective_max_dist_frac = max_dist_frac if group_enabled else 0.0
+
+    parents = get_parents(combined_variants_file)
+    var_ids = sort_var_names(list(parents.keys()))
+    groups = make_var_groups(var_ids, group_enabled, group_dist)
+
+    def parse_var_id(var_id: str):
+        pos_text, vartype = var_id.split(":", 1)
+        if "_" in pos_text:
+            start_text, end_text = pos_text.split("_", 1)
+            start = int(start_text)
+            end = int(end_text)
+        else:
+            start = int(pos_text)
+            end = start
+        return start, end, vartype
+
+    rows = []
+    for idx, group in enumerate(groups):
+        starts, ends = [], []
+        for var_id in group:
+            start, end, _ = parse_var_id(var_id)
+            starts.append(start)
+            ends.append(end)
+        group_size = len(group)
+        max_allowed_mismatches = int(group_size * effective_max_dist_frac)
+        rows.append(
+            {
+                "group_index": idx,
+                "group_size": group_size,
+                "max_allowed_mismatches": max_allowed_mismatches,
+                "max_distance_frac": effective_max_dist_frac,
+                "group_dist": group_dist,
+                "start_pos": int(min(starts)) if starts else None,
+                "end_pos": int(max(ends)) if ends else None,
+                "variants": ", ".join(group),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
 def print_unique_nt_reads(df_file, seq_type):
 
     df = import_read_count_data(df_file, seq_type)
@@ -118,7 +264,7 @@ def read_assigned_parents(filename):
     return df
 
 
-def parent_heatmap(filename, parent_freq_file):
+def parent_heatmap(filename, parent_freq_file, color_dict=None, *, reserve_legend_space: bool = True):
 
     # https://chart-studio.plotly.com/~empet/15229/heatmap-with-a-discrete-colorscale/#/
 
@@ -153,8 +299,11 @@ def parent_heatmap(filename, parent_freq_file):
 
     df = df.applymap(norm_val)
 
-    # get colors for each parent
-    color_dict = parent_colors(parent_freq_file)
+    # get colors for each parent (allow caller to provide a shared mapping so
+    # colors stay consistent across group reports)
+    if color_dict is None:
+        color_dict = parent_colors(parent_freq_file)
+
     parents = list(color_dict.keys())
     colors = list(color_dict.values())
 
@@ -181,7 +330,7 @@ def parent_heatmap(filename, parent_freq_file):
             x=numeric_position(df_nums.columns), 
             colorscale=colorsc, 
             zmin=0, zmax=1,
-            hovertemplate='{text}<extra></extra>',
+            hovertemplate='Parent=%{text}<extra></extra>',
             text = df.values,
             showscale=False,
         )
@@ -224,13 +373,40 @@ def parent_heatmap(filename, parent_freq_file):
     fig['layout']['yaxis']['title'] = 'Read'
     fig['layout']['xaxis2']['title'] = 'Position in reference'
 
-    # Improve readability and prevent legend clipping in reports.
-    max_parent_len = max((len(p) for p in parents), default=0)
-    right_margin = min(520, 180 + int(max_parent_len * 6.5))
-    fig.update_layout(
-        margin=dict(l=60, r=right_margin, t=40, b=90),
-        legend=dict(x=1.02, xanchor="left", y=1, yanchor="top", font=dict(size=10)),
-    )
+    # Improve readability and prevent legend clipping in dashboard containers.
+    #
+    # When Plotly legends are used inside Quarto dashboard cards they can be
+    # clipped. For plots that need Plotly legends, reserve space to the right
+    # using axis domains. For plots that render an external HTML legend, disable
+    # reservation so the heatmap can use the full width.
+    if reserve_legend_space:
+        max_parent_len = max((len(str(p)) for p in parents), default=0)
+        legend_frac = min(0.65, max(0.24, 0.14 + (0.008 * max_parent_len)))
+        x2_end = max(0.45, 1.0 - legend_frac)
+        x2_start = 0.175
+        legend_x = min(0.995, x2_end + 0.01)
+
+        fig.update_layout(
+            margin=dict(l=60, r=40, t=40, b=90),
+            xaxis=dict(domain=[0.0, 0.125]),
+            xaxis2=dict(domain=[x2_start, x2_end]),
+            legend=dict(
+                x=legend_x,
+                xanchor="left",
+                y=1.0,
+                yanchor="top",
+                font=dict(size=10),
+                bgcolor="rgba(255,255,255,0.9)",
+                bordercolor="rgba(0,0,0,0.15)",
+                borderwidth=1,
+            ),
+        )
+    else:
+        fig.update_layout(
+            margin=dict(l=60, r=40, t=40, b=90),
+            xaxis=dict(domain=[0.0, 0.125]),
+            xaxis2=dict(domain=[0.175, 1.0]),
+        )
     fig.update_xaxes(automargin=True)
     fig.update_xaxes(tickangle=90, automargin=True, nticks=30, row=1, col=2)
 
@@ -257,13 +433,23 @@ def plot_breakpoints(breakpoints_file, counts_file, seq_type):
     )
     return fig
 
-def plot_parent_frequencies(parents_file):
+def plot_parent_frequencies(parents_file, non_parental_min_freq=None):
 
     # read data
     df = pd.read_csv(parents_file, delimiter='\t')
 
-    # change 'non_parental_1' etc to 'non parental'
-    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
+    # collapse 'non_parental_1' etc to 'non parental'
+    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\\d+", "non parental", regex=True)
+
+    # Optionally hide low-frequency non-parental assignment in this plot.
+    #
+    # Note: this plot shows per-variant parent assignment frequencies from the
+    # assigned-parents table. The include_non_parental threshold applies to
+    # selecting which non-parental alleles are allowed during filtering, but the
+    # resulting per-variant assignment frequency can still be low at many sites.
+    if non_parental_min_freq is not None:
+        non_parental_min_freq = float(non_parental_min_freq)
+        df = df[~((df["parent"] == "non parental") & (df["frequency"] < non_parental_min_freq))]
 
     # convert frequency to percentage
     df['frequency'] = df['frequency'] * 100
@@ -313,48 +499,99 @@ def make_distance_heatmap(distance_file):
     fig = go.Figure(data=p)
     return fig
 
-def parent_colors(parents_file):
+def _normalise_parent_label(value: str) -> str:
+    text = str(value)
+    text = re.sub(r"non_parental_\d+", "non parental", text)
+    if "," in text:
+        return "multiple"
+    return text
 
-    # read data
-    df = pd.read_csv(parents_file, delimiter='\t')
 
-    # change 'non_parental_1' etc to 'non parental'
-    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
+def parent_colors_from_parents(parents: list[str]) -> dict[str, str]:
+    # Ensure special categories exist and are placed at the end.
+    parents = [str(p) for p in parents]
+    specials = ["non parental", "multiple"]
+    base = [p for p in parents if p not in specials]
+    for special in specials:
+        if special in base:
+            base.remove(special)
+    ordered = base + specials
 
-    # Get unique parents in file order (not sorted).
-    parents = []
-    seen = set()
-    for parent in df['parent'].tolist():
-        if parent in seen:
-            continue
-        seen.add(parent)
-        parents.append(parent)
-
-    # Ensure the special categories are present and placed at the end.
-    for special in ("non parental", "multiple"):
-        if special in parents:
-            parents.remove(special)
-    parents.extend(["non parental", "multiple"])
-
-    # Choose a palette based on how many distinct parents we need to show.
-    #
-    # Keep this stable across Plotly versions by using an explicit Prism palette
-    # (some Plotly versions expose Prism as RGB strings and with a shorter length).
     prism_hex = [
-        '#FD3216', '#00FE35', '#6A76FC', '#FED4C4', '#FE00CE', '#0DF9FF', '#F6F926', '#FF9616',
-        '#479B55', '#EEA6FB', '#DC587D', '#D626FF', '#6E899C', '#00B5F7', '#B68E00', '#C9FBE5',
+        "#FD3216",
+        "#00FE35",
+        "#6A76FC",
+        "#FED4C4",
+        "#FE00CE",
+        "#0DF9FF",
+        "#F6F926",
+        "#FF9616",
+        "#479B55",
+        "#EEA6FB",
+        "#DC587D",
+        "#D626FF",
+        "#6E899C",
+        "#00B5F7",
+        "#B68E00",
+        "#C9FBE5",
     ]
-    total = len(parents)
+
+    total = len(ordered)
     if total <= len(px.colors.qualitative.Plotly):
         colors = px.colors.qualitative.Plotly[:total]
     elif total <= len(prism_hex):
         colors = prism_hex[:total]
     else:
-        # Fall back to a continuous colorscale sampled across [0, 1].
         xs = [i / (total - 1) for i in range(total)]
         colors = px.colors.sample_colorscale(px.colors.sequential.Turbo, xs)
 
-    return dict(zip(parents, colors))
+    return dict(zip(ordered, colors))
+
+
+def parent_colors_for_group(parent_freq_files: list[str]) -> dict[str, str]:
+    parents: list[str] = []
+    seen: set[str] = set()
+
+    for path in parent_freq_files:
+        if not path:
+            continue
+        try:
+            df = pd.read_csv(path, delimiter="\t")
+        except Exception:
+            continue
+        if "parent" not in df.columns:
+            continue
+        for raw in df["parent"].tolist():
+            label = _normalise_parent_label(raw)
+            if label in seen:
+                continue
+            seen.add(label)
+            parents.append(label)
+
+    # Stable ordering within a group report: alphabetical for real parents, then specials.
+    specials = ["non parental", "multiple"]
+    base = sorted([p for p in parents if p not in specials])
+    ordered = base + specials
+    return parent_colors_from_parents(ordered)
+
+
+def parent_colors(parents_file):
+
+    # read data
+    df = pd.read_csv(parents_file, delimiter='\t')
+
+    df["parent"] = df["parent"].astype(str).map(_normalise_parent_label)
+
+    # Preserve file order for backwards-compatibility for per-sample reports.
+    parents: list[str] = []
+    seen: set[str] = set()
+    for parent in df["parent"].tolist():
+        if parent in seen:
+            continue
+        seen.add(parent)
+        parents.append(parent)
+
+    return parent_colors_from_parents(parents)
 
 def numeric_position(col):
 
@@ -363,3 +600,185 @@ def numeric_position(col):
     col = col.str.replace(":del", "  ", regex=True)
 
     return col
+
+
+def read_msa_fasta(msa_file):
+    records = []
+    name = None
+    seq_parts = []
+    with use_open(msa_file, "rt") as handle:
+        for line in handle:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            if line.startswith(">"):
+                if name is not None:
+                    records.append((name, "".join(seq_parts)))
+                name = line[1:].strip().split()[0]
+                seq_parts = []
+                continue
+            seq_parts.append(line.strip())
+    if name is not None:
+        records.append((name, "".join(seq_parts)))
+    if not records:
+        raise ValueError(f"No sequences found in MSA {msa_file!r}")
+    return records
+
+
+def msa_sequence_length_summary(msa_file):
+    records = read_msa_fasta(msa_file)
+    ref_name, _ref_seq = records[0]
+    lengths = [len(seq.replace("-", "")) for name, seq in records[1:]]
+    if not lengths:
+        return {"reference": ref_name, "n": 0}
+    q1, q3 = np.percentile(lengths, [25, 75])
+    return {
+        "reference": ref_name,
+        "n": int(len(lengths)),
+        "median": float(np.median(lengths)),
+        "q1": float(q1),
+        "q3": float(q3),
+        "min": int(min(lengths)),
+        "max": int(max(lengths)),
+    }
+
+
+def msa_overhangs(msa_file):
+    records = read_msa_fasta(msa_file)
+    ref_name, ref_aln = records[0]
+    ref_non_gap = [i for i, c in enumerate(ref_aln) if c != "-"]
+    if not ref_non_gap:
+        raise ValueError(f"Reference sequence in {msa_file!r} is all gaps.")
+    left_ref = ref_non_gap[0]
+    right_ref = ref_non_gap[-1]
+
+    rows = []
+    for name, aln in records[1:]:
+        if len(aln) != len(ref_aln):
+            raise ValueError(f"MSA sequences differ in aligned length in {msa_file!r}")
+        left_extra = sum(1 for c in aln[:left_ref] if c != "-")
+        right_extra = sum(1 for c in aln[right_ref + 1 :] if c != "-")
+        rows.append(
+            {
+                "seq": name,
+                "overhang_5": int(left_extra),
+                "overhang_3": int(right_extra),
+            }
+        )
+    return pd.DataFrame(rows), {"ref": ref_name, "left_ref_col": int(left_ref), "right_ref_col": int(right_ref)}
+
+
+def overhang_histogram(df, title=None, max_bp=60):
+    if df is None or len(df) == 0:
+        return None
+    df = df.copy()
+    df["overhang_5"] = df["overhang_5"].clip(lower=0, upper=max_bp)
+    df["overhang_3"] = df["overhang_3"].clip(lower=0, upper=max_bp)
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("5' overhang (bp)", "3' overhang (bp)"))
+    fig.add_trace(go.Histogram(x=df["overhang_5"], nbinsx=min(max_bp + 1, 61), marker_color="black"), row=1, col=1)
+    fig.add_trace(go.Histogram(x=df["overhang_3"], nbinsx=min(max_bp + 1, 61), marker_color="black"), row=1, col=2)
+    fig.update_layout(
+        title=title or "",
+        showlegend=False,
+        margin=dict(l=60, r=40, t=60 if title else 40, b=60),
+    )
+    fig.update_xaxes(title_text="bp", row=1, col=1)
+    fig.update_xaxes(title_text="bp", row=1, col=2)
+    fig.update_yaxes(title_text="Reads", row=1, col=1)
+    fig.update_yaxes(title_text="Reads", row=1, col=2)
+    return fig
+
+
+def trimming_suggestion(df, overhang_bp=5, fraction_warn=0.2):
+    if df is None or len(df) == 0:
+        return None
+    frac5 = float((df["overhang_5"] > overhang_bp).mean())
+    frac3 = float((df["overhang_3"] > overhang_bp).mean())
+    frac_any = float(((df["overhang_5"] > overhang_bp) | (df["overhang_3"] > overhang_bp)).mean())
+    if frac_any < fraction_warn:
+        return (
+            f"Most reads align within the reference ends (>{overhang_bp} bp overhang in {frac_any*100:.1f}% of reads)."
+        )
+    return (
+        f"Many reads have extra bases beyond the reference ends (>{overhang_bp} bp overhang in {frac_any*100:.1f}% of reads; "
+        f"5'={frac5*100:.1f}%, 3'={frac3*100:.1f}%). Consider trimming or revisiting adapter settings."
+    )
+
+
+def coverage_depth_plot(depth_tsv_gz):
+    df = pd.read_csv(depth_tsv_gz, sep="\t")
+    if len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="No coverage depth data", showarrow=False, x=0.5, y=0.5, xref="paper", yref="paper")
+        fig.update_layout(margin=dict(l=60, r=40, t=60, b=60))
+        return fig
+
+    df = df[["pos", "depth"]].copy()
+    df["pos"] = pd.to_numeric(df["pos"], errors="coerce")
+    df["depth"] = pd.to_numeric(df["depth"], errors="coerce")
+    df = df.dropna(subset=["pos", "depth"]).sort_values("pos")
+
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["pos"].astype(int),
+                y=df["depth"].astype(float),
+                mode="lines",
+                line=dict(color="#636efa"),
+                hovertemplate="Position in reference=%{x}<br>Depth=%{y}<extra></extra>",
+                showlegend=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        margin=dict(l=60, r=40, t=60, b=60),
+        xaxis_title="Position in reference",
+        yaxis_title="Depth",
+    )
+    return fig
+
+
+def coverage_depth_summary(depth_tsv_gz, low_depth_threshold=10):
+    df = pd.read_csv(depth_tsv_gz, sep="\t")
+    if len(df) == 0:
+        return {"min": 0, "median": 0, "low_frac": 0.0}
+    depths = df["depth"].astype(int).to_numpy()
+    return {
+        "min": int(depths.min()),
+        "median": float(np.median(depths)),
+        "low_frac": float((depths < low_depth_threshold).mean()),
+    }
+
+
+def non_parental_variants(freq_all_file, read_counts_file, seq_type, non_parental_freq_threshold, include_non_parental):
+    if not include_non_parental:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+    df = pd.read_csv(freq_all_file, sep="\t")
+    if len(df) == 0:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+
+    df = df[df["query_name"] == "non_parental"].copy()
+    df = df[df["freq"] >= float(non_parental_freq_threshold)].copy()
+    if len(df) == 0:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+
+    total_reads = get_read_count(read_counts_file, seq_type, "Filtered by reference coverage")
+
+    def fmt_variant(row):
+        pos = str(row["pos"])
+        ref = str(row["ref_bases"])
+        alt = str(row["query_bases"])
+        if ref == ".":
+            return f"{pos}ins{alt}"
+        if alt == ".":
+            return f"{ref}{pos}del"
+        return f"{ref}{pos}{alt}"
+
+    df["variant"] = df.apply(fmt_variant, axis=1)
+    df["read_fraction"] = df["freq"].astype(float)
+    df["read_count"] = (df["read_fraction"] * total_reads).round().astype(int)
+    df = df[["variant", "aa_change", "read_fraction", "read_count"]].sort_values(
+        ["read_fraction", "read_count"], ascending=[False, False]
+    )
+    return df.reset_index(drop=True)

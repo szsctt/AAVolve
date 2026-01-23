@@ -6,8 +6,10 @@ import plotly.express as px
 
 from aavolve.report_helpers import (
     import_read_count_data, assign_file_type, read_count_graph, read_fraction_graph, print_fraction_nt_reads_pass,
+    reads_passing_all_filters, print_reads_passing_all_filters,
     print_unique_nt_reads, print_unique_aa_reads, read_assigned_parents, parent_heatmap, plot_breakpoints,
-    plot_parent_frequencies, make_distance_heatmap, parent_colors, numeric_position
+    plot_parent_frequencies, make_distance_heatmap, parent_colors, numeric_position,
+    msa_overhangs, trimming_suggestion, non_parental_variants
     )
 
 @pytest.fixture
@@ -227,6 +229,35 @@ class TestPrintFractionNtReadsPass:
         captured = capsys.readouterr()
         assert captured.out == f'{pass_frac*100:.2f}%\n'
 
+class TestReadsPassingAllFilters:
+    def test_reads_passing_all_filters(self, example_dfs):
+
+        df_in, df_exp = example_dfs
+        with tempfile.NamedTemporaryFile(mode='w+') as f:
+            df_in.to_csv(f.name, sep='\t', index=False, header=False)
+            f.seek(0)
+
+            count, frac = reads_passing_all_filters(f.name, 'np-cc')
+
+        exp_row = df_exp[df_exp['File type'] == "Filtered non-parental variants"].iloc[0]
+        assert count == int(exp_row["Count"])
+        assert np.isclose(frac, float(exp_row["Fraction of reads"]))
+
+
+class TestPrintReadsPassingAllFilters:
+    def test_print_reads_passing_all_filters(self, example_dfs, capsys):
+
+        df_in, df_exp = example_dfs
+        with tempfile.NamedTemporaryFile(mode='w+') as f:
+            df_in.to_csv(f.name, sep='\t', index=False, header=False)
+            f.seek(0)
+
+            print_reads_passing_all_filters(f.name, 'np-cc')
+
+        exp_row = df_exp[df_exp['File type'] == "Filtered non-parental variants"].iloc[0]
+        captured = capsys.readouterr()
+        assert captured.out == f"{int(exp_row['Count'])} ({float(exp_row['Fraction of reads'])*100:.2f}%)\n"
+
 class TestPrintUniqueNtReads:
 
     def test_print_unique_nt_reads(self, example_dfs, capsys):
@@ -263,6 +294,111 @@ class TestPrintUniqueAaReads:
         count = df_exp[df_exp['File type'] == "Distinct at amino acid level"]['Count'].to_list()[0]
         captured = capsys.readouterr()
         assert captured.out == f'{count}\n'
+
+
+class TestMsaOverhangs:
+    def test_msa_overhangs_counts(self, tmp_path):
+        msa = tmp_path / "msa.fasta"
+        msa.write_text(
+            ">ref\n"
+            "-ACGT-\n"
+            ">r1\n"
+            "TACGT-\n"
+            ">r2\n"
+            "-ACGTA\n"
+        )
+
+        df, meta = msa_overhangs(str(msa))
+        assert set(df.columns) == {"seq", "overhang_5", "overhang_3"}
+        assert meta["left_ref_col"] == 1
+        assert meta["right_ref_col"] == 4
+
+        row1 = df[df["seq"] == "r1"].iloc[0]
+        row2 = df[df["seq"] == "r2"].iloc[0]
+        assert int(row1["overhang_5"]) == 1
+        assert int(row1["overhang_3"]) == 0
+        assert int(row2["overhang_5"]) == 0
+        assert int(row2["overhang_3"]) == 1
+
+
+class TestTrimmingSuggestion:
+    def test_trimming_suggestion_warns_when_many_overhangs(self, tmp_path):
+        msa = tmp_path / "msa.fasta"
+        msa.write_text(
+            ">ref\n"
+            "-ACGT-\n"
+            ">r1\n"
+            "TACGT-\n"
+            ">r2\n"
+            "-ACGTA\n"
+        )
+        df, _ = msa_overhangs(str(msa))
+        msg = trimming_suggestion(df, overhang_bp=0, fraction_warn=0.2)
+        assert msg is not None
+        assert "consider trimming" in msg.lower()
+
+
+class TestNonParentalVariants:
+    def test_non_parental_variants_thresholding(self, example_dfs):
+        df_in, _df_exp = example_dfs
+        with tempfile.NamedTemporaryFile(mode="w+") as counts_file, tempfile.NamedTemporaryFile(mode="w+") as freq_file:
+            df_in.to_csv(counts_file.name, sep="\t", index=False, header=False)
+            counts_file.seek(0)
+
+            freq_file.write(
+                "query_name\tpos\tref_bases\tquery_bases\taa_change\tfreq\n"
+                "non_parental\t10\tA\tC\tTrue\t0.05\n"
+                "non_parental\t11\t.\tGG\tTrue\t0.20\n"
+                "parental\t12\tG\tA\tFalse\t0.50\n"
+            )
+            freq_file.seek(0)
+
+            df = non_parental_variants(
+                freq_file.name,
+                counts_file.name,
+                "np-cc",
+                non_parental_freq_threshold=0.1,
+                include_non_parental=True,
+            )
+
+        assert list(df["variant"]) == ["11insGG"]
+        assert int(df["read_count"].iloc[0]) == 20
+
+
+class TestPlotParentFrequencies:
+    def test_plot_parent_frequencies_filters_low_non_parental(self, example_freq_df):
+        with tempfile.NamedTemporaryFile("w+") as f:
+            # Add a low-frequency non-parental entry that should be filtered.
+            df = example_freq_df.copy()
+            df = pd.concat(
+                [
+                    df,
+                    pd.DataFrame(
+                        {
+                            "variant": ["40:sub"],
+                            "parent": ["non_parental_0"],
+                            "frequency": [0.05],
+                        }
+                    ),
+                    pd.DataFrame(
+                        {
+                            "variant": ["41_42:del"],
+                            "parent": ["non_parental_1"],
+                            "frequency": [0.15],
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
+            df.to_csv(f.name, sep="\t", index=False)
+
+            fig = plot_parent_frequencies(f.name, non_parental_min_freq=0.1)
+
+        # If a 'non parental' trace exists, its y values should be >= 10% (0.1).
+        for tr in fig.data:
+            if str(tr.name) != "non parental":
+                continue
+            assert all(float(v) >= 10.0 for v in tr.y)
 
 class TestReadAssignedParents:
 
