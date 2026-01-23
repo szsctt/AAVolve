@@ -89,10 +89,6 @@ def write_manifest(samples_csv: str, pair_id: str, output_path: str) -> None:
 
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    if out_path.exists():
-        old_contents = out_path.read_text()
-        if old_contents == new_contents:
-            return
     out_path.write_text(new_contents)
 
 

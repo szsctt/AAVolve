@@ -395,6 +395,7 @@ rule report:
         assigned_counts = rules.distinct_reads.output.counts,
         freqs = rules.parent_freq.output.freqs,
         variant_freq_all = rules.variant_frequency.output.all,
+        combined_variants = rules.combine_variants.output.combined,
         breaks_per_var = rules.ident_breakpoints.output.break_per_var,
         variant_window_warning = rules.warn_non_parental_outside_window.output.warning,
         parents_dropped_warning = rules.warn_parents_dropped.output.warning,
@@ -446,6 +447,7 @@ rule report:
             -p assigned_parents {input.assigned_counts} \
             -p parent_frequencies {input.freqs} \
             -p variant_freq_all {input.variant_freq_all} \
+            -p combined_variants {input.combined_variants} \
             -p breakpoints_per_var {input.breaks_per_var} \
             -p variant_window_warning {input.variant_window_warning} \
             -p parents_dropped_warning {input.parents_dropped_warning} \
