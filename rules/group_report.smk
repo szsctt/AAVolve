@@ -18,10 +18,6 @@ def _trimmed_samples_for_pair(pair_id: str):
 
 rule group_manifest:
     input:
-        # iputs are unused, but ensure that manifest is re-run if samples change
-        read_counts=lambda wildcards: [
-            f"out/qc/{s}_read-counts.tsv" for s in _samples_for_pair(wildcards.pair_id)
-        ],
         samples_csv = lambda wildcards: config["samples"]
     output:
         manifest="out/reports/group_reports/{pair_id}_manifest.tsv",
