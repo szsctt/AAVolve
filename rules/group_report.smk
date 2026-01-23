@@ -22,6 +22,7 @@ rule group_manifest:
         read_counts=lambda wildcards: [
             f"out/qc/{s}_read-counts.tsv" for s in _samples_for_pair(wildcards.pair_id)
         ],
+        samples_csv = lambda wildcards: config["samples"]
     output:
         manifest="out/reports/group_reports/{pair_id}_manifest.tsv",
     container: "docker://szsctt/lr_pybio:py310"
