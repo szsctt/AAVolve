@@ -172,3 +172,23 @@ rule align:
         
         samtools index {output.aligned}
         """
+
+
+rule coverage_depth:
+    input:
+        bam=rules.align.output.aligned,
+        bai=rules.align.output.idx,
+    output:
+        depth="out/qc/coverage/{sample}_depth.tsv.gz",
+    wildcard_constraints:
+        sample = "|".join(samples.sample_name)
+    container: "docker://szsctt/lr_pybio:py310"
+    log:
+        "logs/coverage_depth/{sample}.log"
+    shell:
+        """
+        python3 -m aavolve.coverage_depth \
+            --bam {input.bam} \
+            --output {output.depth} \
+            2> {log}
+        """
