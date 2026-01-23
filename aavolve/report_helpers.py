@@ -8,6 +8,7 @@ import re
 import hashlib
 
 from aavolve.utils import MAX_SEQS
+from aavolve.utils import use_open
 
 def display_warning_file(path, title="Warning"):
     if path is None or path == "":
@@ -104,6 +105,28 @@ def print_fraction_nt_reads_pass(df_file, seq_type):
     pass_frac = df[df['File type'] == "Filtered non-parental variants"]['Fraction of reads'].to_list()[0]
 
     print(f'{pass_frac*100:.2f}%')
+
+def reads_passing_all_filters(df_file, seq_type):
+    df = import_read_count_data(df_file, seq_type)
+    row = df[df["File type"] == "Filtered non-parental variants"]
+    if len(row) != 1:
+        raise ValueError("Expected exactly one row for 'Filtered non-parental variants'")
+    count = int(row["Count"].iloc[0])
+    frac = float(row["Fraction of reads"].iloc[0])
+    return count, frac
+
+
+def print_reads_passing_all_filters(df_file, seq_type):
+    count, frac = reads_passing_all_filters(df_file, seq_type)
+    print(f"{count} ({frac*100:.2f}%)")
+
+
+def get_read_count(df_file, seq_type, file_type):
+    df = import_read_count_data(df_file, seq_type)
+    row = df[df["File type"] == file_type]
+    if len(row) != 1:
+        raise ValueError(f"Expected exactly one row for file type {file_type!r}")
+    return int(row["Count"].iloc[0])
 
 def print_unique_nt_reads(df_file, seq_type):
 
@@ -273,13 +296,23 @@ def plot_breakpoints(breakpoints_file, counts_file, seq_type):
     )
     return fig
 
-def plot_parent_frequencies(parents_file):
+def plot_parent_frequencies(parents_file, non_parental_min_freq=None):
 
     # read data
     df = pd.read_csv(parents_file, delimiter='\t')
 
-    # change 'non_parental_1' etc to 'non parental'
-    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\d+", "non parental", regex=True)
+    # collapse 'non_parental_1' etc to 'non parental'
+    df['parent'] = df['parent'].astype(str).str.replace("non_parental_\\d+", "non parental", regex=True)
+
+    # Optionally hide low-frequency non-parental assignment in this plot.
+    #
+    # Note: this plot shows per-variant parent assignment frequencies from the
+    # assigned-parents table. The include_non_parental threshold applies to
+    # selecting which non-parental alleles are allowed during filtering, but the
+    # resulting per-variant assignment frequency can still be low at many sites.
+    if non_parental_min_freq is not None:
+        non_parental_min_freq = float(non_parental_min_freq)
+        df = df[~((df["parent"] == "non parental") & (df["frequency"] < non_parental_min_freq))]
 
     # convert frequency to percentage
     df['frequency'] = df['frequency'] * 100
@@ -379,3 +412,185 @@ def numeric_position(col):
     col = col.str.replace(":del", "  ", regex=True)
 
     return col
+
+
+def read_msa_fasta(msa_file):
+    records = []
+    name = None
+    seq_parts = []
+    with use_open(msa_file, "rt") as handle:
+        for line in handle:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            if line.startswith(">"):
+                if name is not None:
+                    records.append((name, "".join(seq_parts)))
+                name = line[1:].strip().split()[0]
+                seq_parts = []
+                continue
+            seq_parts.append(line.strip())
+    if name is not None:
+        records.append((name, "".join(seq_parts)))
+    if not records:
+        raise ValueError(f"No sequences found in MSA {msa_file!r}")
+    return records
+
+
+def msa_sequence_length_summary(msa_file):
+    records = read_msa_fasta(msa_file)
+    ref_name, _ref_seq = records[0]
+    lengths = [len(seq.replace("-", "")) for name, seq in records[1:]]
+    if not lengths:
+        return {"reference": ref_name, "n": 0}
+    q1, q3 = np.percentile(lengths, [25, 75])
+    return {
+        "reference": ref_name,
+        "n": int(len(lengths)),
+        "median": float(np.median(lengths)),
+        "q1": float(q1),
+        "q3": float(q3),
+        "min": int(min(lengths)),
+        "max": int(max(lengths)),
+    }
+
+
+def msa_overhangs(msa_file):
+    records = read_msa_fasta(msa_file)
+    ref_name, ref_aln = records[0]
+    ref_non_gap = [i for i, c in enumerate(ref_aln) if c != "-"]
+    if not ref_non_gap:
+        raise ValueError(f"Reference sequence in {msa_file!r} is all gaps.")
+    left_ref = ref_non_gap[0]
+    right_ref = ref_non_gap[-1]
+
+    rows = []
+    for name, aln in records[1:]:
+        if len(aln) != len(ref_aln):
+            raise ValueError(f"MSA sequences differ in aligned length in {msa_file!r}")
+        left_extra = sum(1 for c in aln[:left_ref] if c != "-")
+        right_extra = sum(1 for c in aln[right_ref + 1 :] if c != "-")
+        rows.append(
+            {
+                "seq": name,
+                "overhang_5": int(left_extra),
+                "overhang_3": int(right_extra),
+            }
+        )
+    return pd.DataFrame(rows), {"ref": ref_name, "left_ref_col": int(left_ref), "right_ref_col": int(right_ref)}
+
+
+def overhang_histogram(df, title=None, max_bp=60):
+    if df is None or len(df) == 0:
+        return None
+    df = df.copy()
+    df["overhang_5"] = df["overhang_5"].clip(lower=0, upper=max_bp)
+    df["overhang_3"] = df["overhang_3"].clip(lower=0, upper=max_bp)
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("5' overhang (bp)", "3' overhang (bp)"))
+    fig.add_trace(go.Histogram(x=df["overhang_5"], nbinsx=min(max_bp + 1, 61), marker_color="black"), row=1, col=1)
+    fig.add_trace(go.Histogram(x=df["overhang_3"], nbinsx=min(max_bp + 1, 61), marker_color="black"), row=1, col=2)
+    fig.update_layout(
+        title=title or "",
+        showlegend=False,
+        margin=dict(l=60, r=40, t=60 if title else 40, b=60),
+    )
+    fig.update_xaxes(title_text="bp", row=1, col=1)
+    fig.update_xaxes(title_text="bp", row=1, col=2)
+    fig.update_yaxes(title_text="Reads", row=1, col=1)
+    fig.update_yaxes(title_text="Reads", row=1, col=2)
+    return fig
+
+
+def trimming_suggestion(df, overhang_bp=5, fraction_warn=0.2):
+    if df is None or len(df) == 0:
+        return None
+    frac5 = float((df["overhang_5"] > overhang_bp).mean())
+    frac3 = float((df["overhang_3"] > overhang_bp).mean())
+    frac_any = float(((df["overhang_5"] > overhang_bp) | (df["overhang_3"] > overhang_bp)).mean())
+    if frac_any < fraction_warn:
+        return (
+            f"Most reads align within the reference ends (>{overhang_bp} bp overhang in {frac_any*100:.1f}% of reads)."
+        )
+    return (
+        f"Many reads have extra bases beyond the reference ends (>{overhang_bp} bp overhang in {frac_any*100:.1f}% of reads; "
+        f"5'={frac5*100:.1f}%, 3'={frac3*100:.1f}%). Consider trimming or revisiting adapter settings."
+    )
+
+
+def coverage_depth_plot(depth_tsv_gz):
+    df = pd.read_csv(depth_tsv_gz, sep="\t")
+    if len(df) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="No coverage depth data", showarrow=False, x=0.5, y=0.5, xref="paper", yref="paper")
+        fig.update_layout(margin=dict(l=60, r=40, t=60, b=60))
+        return fig
+
+    df = df[["pos", "depth"]].copy()
+    df["pos"] = pd.to_numeric(df["pos"], errors="coerce")
+    df["depth"] = pd.to_numeric(df["depth"], errors="coerce")
+    df = df.dropna(subset=["pos", "depth"]).sort_values("pos")
+
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["pos"].astype(int),
+                y=df["depth"].astype(float),
+                mode="lines",
+                line=dict(color="#636efa"),
+                hovertemplate="Position in reference=%{x}<br>Depth=%{y}<extra></extra>",
+                showlegend=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        margin=dict(l=60, r=40, t=60, b=60),
+        xaxis_title="Position in reference",
+        yaxis_title="Depth",
+    )
+    return fig
+
+
+def coverage_depth_summary(depth_tsv_gz, low_depth_threshold=10):
+    df = pd.read_csv(depth_tsv_gz, sep="\t")
+    if len(df) == 0:
+        return {"min": 0, "median": 0, "low_frac": 0.0}
+    depths = df["depth"].astype(int).to_numpy()
+    return {
+        "min": int(depths.min()),
+        "median": float(np.median(depths)),
+        "low_frac": float((depths < low_depth_threshold).mean()),
+    }
+
+
+def non_parental_variants(freq_all_file, read_counts_file, seq_type, non_parental_freq_threshold, include_non_parental):
+    if not include_non_parental:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+    df = pd.read_csv(freq_all_file, sep="\t")
+    if len(df) == 0:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+
+    df = df[df["query_name"] == "non_parental"].copy()
+    df = df[df["freq"] >= float(non_parental_freq_threshold)].copy()
+    if len(df) == 0:
+        return pd.DataFrame(columns=["variant", "aa_change", "read_fraction", "read_count"])
+
+    total_reads = get_read_count(read_counts_file, seq_type, "Filtered by reference coverage")
+
+    def fmt_variant(row):
+        pos = str(row["pos"])
+        ref = str(row["ref_bases"])
+        alt = str(row["query_bases"])
+        if ref == ".":
+            return f"{pos}ins{alt}"
+        if alt == ".":
+            return f"{ref}{pos}del"
+        return f"{ref}{pos}{alt}"
+
+    df["variant"] = df.apply(fmt_variant, axis=1)
+    df["read_fraction"] = df["freq"].astype(float)
+    df["read_count"] = (df["read_fraction"] * total_reads).round().astype(int)
+    df = df[["variant", "aa_change", "read_fraction", "read_count"]].sort_values(
+        ["read_fraction", "read_count"], ascending=[False, False]
+    )
+    return df.reset_index(drop=True)
