@@ -218,6 +218,9 @@ def test_job_dependency_expansion(tmp_path, snakefile, np_only_config):
         # Find assign_parents job
         assign_jobs = [j for j in jobs_list if j.rule.name == 'assign_parents' and dict(j.wildcards).get('sample') == sample_name]
         assert len(assign_jobs) > 0, f"Should have assign_parents job for sample '{sample_name}'"
+        assign_outputs = list(assign_jobs[0].output)
+        assert f"out/parents/assigned/{sample_name}_assigned-parents.tsv.gz" in assign_outputs, \
+            f"Assign parents job should output 'out/parents/assigned/{sample_name}_assigned-parents.tsv.gz', got: {assign_outputs}"
 
 
 def test_group_manifest_depends_on_samples_csv(tmp_path, snakefile, np_only_config):
@@ -228,9 +231,6 @@ def test_group_manifest_depends_on_samples_csv(tmp_path, snakefile, np_only_conf
             assert str(np_only_config) in {str(p) for p in job.input}, (
                 "group_manifest should depend on the samples CSV so it is regenerated when samples change"
             )
-        assign_outputs = list(assign_jobs[0].output)
-        assert f"out/parents/assigned/{sample_name}_assigned-parents.tsv.gz" in assign_outputs, \
-            f"Assign parents job should output 'out/parents/assigned/{sample_name}_assigned-parents.tsv.gz', got: {assign_outputs}"
 
 
 
