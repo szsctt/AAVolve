@@ -29,5 +29,5 @@ jobs:
           environment-file: deps/snakemake/snakemake.yml
       - 
         name: Run snakemake
-        run: snakemake --cores 1 --config samples=tests/data/config/test_samples.csv --use-apptainer --apptainer-args="--cleanenv"
+        run: snakemake --cores 1 --config samples=tests/data/config/test_samples.csv --use-apptainer
         shell: micromamba-shell {0}
