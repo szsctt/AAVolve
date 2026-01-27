@@ -377,12 +377,34 @@ def check_data(samples):
     if 'max_group_distance' not in samples.columns:
         samples['max_group_distance'] = [DEFAULT_MAX_GROUP_DISTANCE]*len(samples)
     for i, row in samples.iterrows():
+        value = row["max_group_distance"]
+
+        # If null/blank, use default (consistent with other boolean-ish settings).
+        if value is None or pd.isnull(value):
+            samples.loc[i, "max_group_distance"] = DEFAULT_MAX_GROUP_DISTANCE
+            continue
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned == "" or cleaned.lower() == "nan":
+                samples.loc[i, "max_group_distance"] = DEFAULT_MAX_GROUP_DISTANCE
+                continue
+            value = cleaned
+
         try:
-            float(row['max_group_distance'])
-        except ValueError:
-            raise ValueError(f"Column 'max_group_distance' must be a float between 0 and 1: found value {row['max_group_distance']} in row {i}")
-        if row['max_group_distance'] < 0 or row['max_group_distance'] > 1:
-            raise ValueError(f"Column 'max_group_distance' must be a float between 0 and 1: found value {row['max_group_distance']} in row {i}")
+            numeric = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "Column 'max_group_distance' must be a float between 0 and 1: "
+                f"found value {row['max_group_distance']} in row {i}"
+            )
+
+        if not np.isfinite(numeric) or numeric < 0 or numeric > 1:
+            raise ValueError(
+                "Column 'max_group_distance' must be a float between 0 and 1: "
+                f"found value {row['max_group_distance']} in row {i}"
+            )
+
+        samples.loc[i, "max_group_distance"] = numeric
 
 
     # check that if minimap2_params is specified, it is a string

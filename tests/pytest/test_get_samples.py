@@ -784,6 +784,12 @@ class TestCheckData:
             check_data(sample_df)
         assert error.value.args[0] == expected_error
 
+    @pytest.mark.parametrize("max_group_distance", [None, np.nan, "", "nan", " NaN "])
+    def test_check_data_max_group_distance_null_uses_default(self, sample_df, max_group_distance):
+        sample_df["max_group_distance"] = max_group_distance
+        check_data(sample_df)
+        assert all(sample_df["max_group_distance"] == DEFAULT_MAX_GROUP_DISTANCE)
+
     @pytest.mark.parametrize("bad_val", [None, 123, 1.5, np.nan, [], {}])
     def test_check_data_minimap2_params_non_string(self, sample_df, bad_val):
         """
