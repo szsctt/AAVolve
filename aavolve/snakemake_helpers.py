@@ -584,8 +584,14 @@ def build_npcc_consensus_maps(samples_df):
     if "sample_name" not in samples_df.columns:
         raise KeyError("samples_df must contain 'sample_name'")
 
+    # If there are no np-cc rows, we don't need any of the np-cc-specific columns.
+    # This lets the workflow load and run input validation even when using the
+    # command-line mode (no samples CSV) or minimal configs.
+    if not any(samples_df["seq_tech"] == "np-cc"):
+        return {}, {}, {}
+
     required = {"npcc_consensus_id", "read_file", "splint_file"}
-    missing = [c for c in required if c not in samples_df.columns]
+    missing = [c for c in sorted(required) if c not in samples_df.columns]
     if missing:
         raise KeyError(f"samples_df missing required column(s): {', '.join(missing)}")
 

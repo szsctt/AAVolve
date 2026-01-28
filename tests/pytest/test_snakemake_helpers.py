@@ -293,9 +293,6 @@ class TestBuildNpccConsensusMaps:
             {
                 "sample_name": ["s1"],
                 "seq_tech": ["np"],
-                "npcc_consensus_id": [None],
-                "read_file": ["reads.fastq"],
-                "splint_file": [None],
             }
         )
         sample_to_cc_id, cc_id_to_reads, cc_id_to_splint = build_npcc_consensus_maps(df)
