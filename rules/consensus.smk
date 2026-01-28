@@ -18,7 +18,7 @@ rule normalize_splint_by_input:
        inputs_ok="out/qc/input-checks/_all.ok",
        splint = lambda wildcards: npcc_cc_id_to_splint[wildcards.cc_id],
    output:
-       splint = out/splint/by_input/{cc_id}/splint.fasta"
+       splint = "out/splint/by_input/{cc_id}/splint.fasta"
    log:
        "logs/normalize_splint_by_input/{cc_id}.log"
    container: "docker://szsctt/lr_pybio:py310"
