@@ -16,9 +16,9 @@ rule normalize_splint:
 rule normalize_splint_by_input:
    input:
        inputs_ok="out/qc/input-checks/_all.ok",
-       splint=lambda wildcards: npcc_cc_id_to_splint[wildcards.cc_id],
+       splint = lambda wildcards: npcc_cc_id_to_splint[wildcards.cc_id],
    output:
-       splint="out/splint/by_input/{cc_id}/splint.fasta"
+       splint = out/splint/by_input/{cc_id}/splint.fasta"
    log:
        "logs/normalize_splint_by_input/{cc_id}.log"
    container: "docker://szsctt/lr_pybio:py310"
@@ -31,13 +31,13 @@ rule normalize_splint_by_input:
 
 rule consensus_by_input:
    input:
-       inputs_ok="out/qc/input-checks/_all.ok",
-       reads=lambda wildcards: npcc_cc_id_to_reads[wildcards.cc_id],
-       splint="out/splint/by_input/{cc_id}/splint.fasta",
+       inputs_ok = "out/qc/input-checks/_all.ok",
+       reads = lambda wildcards: npcc_cc_id_to_reads[wildcards.cc_id],
+       splint = "out/splint/by_input/{cc_id}/splint.fasta",
    output:
-       consensus_reads="out/c3poa/by_input/{cc_id}/splint/R2C2_Consensus.fasta.gz"
+       consensus_reads = "out/c3poa/by_input/{cc_id}/splint/R2C2_Consensus.fasta.gz"
    params:
-       dir=lambda wildcards, output: os.path.dirname(os.path.dirname(output.consensus_reads)) + '/',
+       dir = lambda wildcards, output: os.path.dirname(os.path.dirname(output.consensus_reads)) + '/',
    log:
        "logs/consensus_by_input/{cc_id}.log"
    container: "docker://szsctt/lr_c3poa"
@@ -66,7 +66,7 @@ rule consensus_by_input:
 rule consensus:
    input:
        inputs_ok = "out/qc/input-checks/_all.ok",
-       consensus_reads=lambda wildcards: f"out/c3poa/by_input/{npcc_sample_to_cc_id[wildcards.sample]}/splint/R2C2_Consensus.fasta.gz",
+       consensus_reads = lambda wildcards: f"out/c3poa/by_input/{npcc_sample_to_cc_id[wildcards.sample]}/splint/R2C2_Consensus.fasta.gz",
    output:
        consensus_reads = "out/c3poa/{sample}/splint/R2C2_Consensus.fasta.gz"
    log:
@@ -97,10 +97,10 @@ rule filter_consensus:
 
 rule count_repeats_by_input:
     input:
-        inputs_ok="out/qc/input-checks/_all.ok",
-        fasta="out/c3poa/by_input/{cc_id}/splint/R2C2_Consensus.fasta.gz",
+        inputs_ok = "out/qc/input-checks/_all.ok",
+        fasta = "out/c3poa/by_input/{cc_id}/splint/R2C2_Consensus.fasta.gz",
     output:
-        counts="out/c3poa/by_input/{cc_id}/repeat_counts.tsv",
+        counts = "out/c3poa/by_input/{cc_id}/repeat_counts.tsv",
     log:
         "logs/count_repeats_by_input/{cc_id}.log"
     container: "docker://szsctt/lr_pybio:py310"
@@ -113,7 +113,7 @@ rule count_repeats_by_input:
 rule count_repeats:
     input:
         inputs_ok = "out/qc/input-checks/_all.ok",
-        counts=lambda wildcards: f"out/c3poa/by_input/{npcc_sample_to_cc_id[wildcards.sample]}/repeat_counts.tsv",
+        counts = lambda wildcards: f"out/c3poa/by_input/{npcc_sample_to_cc_id[wildcards.sample]}/repeat_counts.tsv",
     output:
         counts = "out/c3poa/{sample}/repeat_counts.tsv"
     log:
