@@ -237,10 +237,6 @@ def check_data(samples):
     for i, row in samples.iterrows():
         if row["seq_tech"] != "np-cc":
             continue
-        if row.get("splint_file") is None or pd.isnull(row.get("splint_file")):
-            raise ValueError(
-                f"For sequencing technology 'np-cc', must specify splint file (column 'splint_file')"
-            )
         samples.loc[i, "npcc_consensus_id"] = npcc_consensus_id(
             read_file=str(row["read_file"]),
             splint_file=str(row["splint_file"]),
