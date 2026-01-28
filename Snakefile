@@ -4,6 +4,7 @@ from aavolve.get_samples import get_samples
 from aavolve.snakemake_helpers import (
     build_group_report_targets,
     build_input_validation_targets,
+    build_npcc_consensus_maps,
     build_non_parental_variant_group_maps,
 )
 from aavolve.utils import normalize_names
@@ -22,6 +23,8 @@ sample_name_pattern = "|".join(re.escape(name) for name in all_names)
 wildcard_constraints:
     sample=sample_name_pattern,
     anchor_suffix="\.fastq(\.gz)?|\.fasta(\.gz)?",
+    # Derived key used to de-duplicate expensive np-cc (R2C2) consensus across samples.
+    cc_id="npcc_[0-9a-f]{12}",
 
 # target files for RCA consensus
 consensus = list()
@@ -29,6 +32,8 @@ for name, seq_tech in zip(samples.sample_name, samples.seq_tech):
     if seq_tech == 'np-cc':
         consensus.append(f"out/c3poa_filt/{name}.fasta.gz")
         consensus.append(f"out/c3poa/{name}/repeat_counts.tsv")
+
+npcc_sample_to_cc_id, npcc_cc_id_to_reads, npcc_cc_id_to_splint = build_npcc_consensus_maps(samples)
 
 
 # Validate inputs once per unique (parent_file, reference_file) combination.

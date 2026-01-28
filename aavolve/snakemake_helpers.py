@@ -565,3 +565,59 @@ def format_input_reads(input):
         args = args + f"--fastq-files {' '.join(fastqs)}"
 
     return args
+
+
+def build_npcc_consensus_maps(samples_df):
+    """Return maps needed to de-duplicate np-cc (R2C2) consensus runs.
+
+    Args:
+        samples_df: samples DataFrame as returned by ``get_samples``.
+
+    Returns:
+        sample_to_cc_id: dict mapping np-cc sample_name -> npcc_consensus_id
+        cc_id_to_reads: dict mapping npcc_consensus_id -> read_file
+        cc_id_to_splint: dict mapping npcc_consensus_id -> splint_file
+    """
+
+    if "seq_tech" not in samples_df.columns:
+        raise KeyError("samples_df must contain 'seq_tech'")
+    if "sample_name" not in samples_df.columns:
+        raise KeyError("samples_df must contain 'sample_name'")
+
+    # If there are no np-cc rows, we don't need any of the np-cc-specific columns.
+    # This lets the workflow load and run input validation even when using the
+    # command-line mode (no samples CSV) or minimal configs.
+    if not any(samples_df["seq_tech"] == "np-cc"):
+        return {}, {}, {}
+
+    required = {"npcc_consensus_id", "read_file", "splint_file"}
+    missing = [c for c in sorted(required) if c not in samples_df.columns]
+    if missing:
+        raise KeyError(f"samples_df missing required column(s): {', '.join(missing)}")
+
+    sample_to_cc_id = {
+        str(sample_name): str(cc_id)
+        for sample_name, cc_id, tech in zip(
+            samples_df.sample_name, samples_df.npcc_consensus_id, samples_df.seq_tech
+        )
+        if tech == "np-cc"
+    }
+
+    cc_id_to_reads = {}
+    cc_id_to_splint = {}
+    for sample_name, cc_id in sample_to_cc_id.items():
+        row = samples_df.loc[samples_df.sample_name == sample_name].iloc[0]
+        read_file = str(row["read_file"])
+        splint_file = str(row["splint_file"])
+        if cc_id in cc_id_to_reads:
+            if cc_id_to_reads[cc_id] != read_file or cc_id_to_splint[cc_id] != splint_file:
+                raise ValueError(
+                    "Inconsistent np-cc consensus inputs detected for the same npcc_consensus_id. "
+                    f"id={cc_id} first=({cc_id_to_reads[cc_id]},{cc_id_to_splint[cc_id]}) "
+                    f"vs sample={sample_name} ({read_file},{splint_file})"
+                )
+        else:
+            cc_id_to_reads[cc_id] = read_file
+            cc_id_to_splint[cc_id] = splint_file
+
+    return sample_to_cc_id, cc_id_to_reads, cc_id_to_splint

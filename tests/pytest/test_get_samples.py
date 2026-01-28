@@ -19,6 +19,7 @@ from aavolve.get_samples import (
     SEQ_TECHS,
     DEFAULT_ANCHORS,
     DEFAULT_REQUIRE_END_TO_END_ALIGNMENT,
+    npcc_consensus_id,
 )
 from aavolve.get_samples import get_name, get_first_parent, get_command_options, check_data, get_samples
 
@@ -844,6 +845,7 @@ class TestGetSamples:
         expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
         expected_samples['anchors'] = DEFAULT_ANCHORS
         expected_samples['require_end_to_end_alignment'] = DEFAULT_REQUIRE_END_TO_END_ALIGNMENT
+        expected_samples['npcc_consensus_id'] = None
 
         # check data frames are equivalent - columns might be in different order
         assert set(samples.columns) == set(expected_samples.columns)
@@ -877,6 +879,13 @@ class TestGetSamples:
             expected_samples['max_group_distance'] = DEFAULT_MAX_GROUP_DISTANCE
             expected_samples['anchors'] = DEFAULT_ANCHORS
             expected_samples['require_end_to_end_alignment'] = DEFAULT_REQUIRE_END_TO_END_ALIGNMENT
+            if seq_tech == 'np-cc':
+                expected_samples['npcc_consensus_id'] = npcc_consensus_id(
+                    read_file=str(expected_samples.loc[0, 'read_file']),
+                    splint_file=str(expected_samples.loc[0, 'splint_file']),
+                )
+            else:
+                expected_samples['npcc_consensus_id'] = None
 
             # pass in both file and config
             config['samples'] = f.name

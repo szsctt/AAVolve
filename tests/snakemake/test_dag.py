@@ -75,6 +75,16 @@ def np_only_config() -> Path:
         raise FileNotFoundError(f"Could not find test config at expected location: {config_path}")
     return config_path
 
+
+@pytest.fixture
+def npcc_dedup_minreps_config() -> Path:
+    """Test config where np-cc samples share reads/splint but differ in min_reps."""
+    repo_root = Path(__file__).resolve().parents[2]
+    config_path = repo_root / "tests" / "data" / "config" / "test_npcc_dedup_minreps.csv"
+    if not config_path.exists():
+        raise FileNotFoundError(f"Could not find test config at expected location: {config_path}")
+    return config_path
+
 def build_dag(
     snakefile: Path,
     targets: list[str],
@@ -265,6 +275,44 @@ def test_consensus_rules_present(tmp_path, snakefile, samples_config):
         filter_outputs = list(filter_jobs[0].output)
         assert f"out/c3poa_filt/{npcc_sample_name}.fasta.gz" in filter_outputs, \
             f"Filter consensus job should output 'out/c3poa_filt/{npcc_sample_name}.fasta.gz', got: {filter_outputs}"
+
+
+def test_npcc_consensus_deduplicated_by_inputs(tmp_path, snakefile, samples_config):
+    """Consensus should run once per unique (read_file,splint_file) pair, even if multiple samples share inputs."""
+    samples_df = get_samples({"samples": str(samples_config)})
+    npcc_samples = samples_df[samples_df.seq_tech == "np-cc"]
+    assert len(npcc_samples) > 0, "samples_config should have np-cc samples for this test"
+    unique_ids = sorted(set(npcc_samples["npcc_consensus_id"].astype(str)))
+
+    with DAGContext(snakefile, {"samples": str(samples_config)}) as dag_ctx:
+        jobs_list = dag_ctx.jobs
+        dedup_jobs = [j for j in jobs_list if j.rule.name == "consensus_by_input"]
+        assert len(dedup_jobs) == len(unique_ids), (
+            f"Expected {len(unique_ids)} consensus_by_input jobs (one per unique input), got {len(dedup_jobs)}"
+        )
+        job_ids = sorted({dict(j.wildcards).get("cc_id") for j in dedup_jobs})
+        assert job_ids == unique_ids
+
+
+def test_npcc_consensus_dedup_when_minreps_differs(tmp_path, snakefile, npcc_dedup_minreps_config):
+    """Different min_reps should NOT cause consensus_by_input to rerun; only filter_consensus differs per sample."""
+    samples_df = get_samples({"samples": str(npcc_dedup_minreps_config)})
+    npcc_samples = samples_df[samples_df.seq_tech == "np-cc"]
+    assert len(npcc_samples) == 2
+    assert len(set(npcc_samples["npcc_consensus_id"].astype(str))) == 1, "Inputs are shared; expected 1 consensus id"
+
+    with DAGContext(snakefile, {"samples": str(npcc_dedup_minreps_config)}) as dag_ctx:
+        jobs_list = dag_ctx.jobs
+        consensus_jobs = [j for j in jobs_list if j.rule.name == "consensus_by_input"]
+        assert len(consensus_jobs) == 1, "Consensus should run once per shared (read_file,splint_file) pair"
+
+        filter_jobs = [j for j in jobs_list if j.rule.name == "filter_consensus"]
+        assert len(filter_jobs) == 2, "Filtering should run per sample because min_reps differs"
+        filter_outputs = sorted(str(p) for j in filter_jobs for p in j.output)
+        assert filter_outputs == sorted(
+            [f"out/c3poa_filt/{name}.fasta.gz" for name in npcc_samples["sample_name"].tolist()]
+        )
+
 
 def test_consensus_not_performed_for_non_npcc(tmp_path, snakefile, np_only_config):
     """Test that consensus jobs are not created for non-np-cc samples."""

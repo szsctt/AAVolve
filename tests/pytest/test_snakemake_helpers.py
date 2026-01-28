@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from aavolve.snakemake_helpers import (
     anchors_enabled,
+    build_npcc_consensus_maps,
     fill_parents,
     format_input_reads,
     get_anchor_length,
@@ -284,6 +285,49 @@ class TestAnchorHelpers:
         samples = self._make_samples()
         wildcards = SimpleNamespace(sample='sample1')
         assert get_reference_for_align(wildcards, samples) == 'out/anchors/references/sample1.fasta'
+
+
+class TestBuildNpccConsensusMaps:
+    def test_build_maps_empty_for_non_npcc(self):
+        df = pd.DataFrame(
+            {
+                "sample_name": ["s1"],
+                "seq_tech": ["np"],
+            }
+        )
+        sample_to_cc_id, cc_id_to_reads, cc_id_to_splint = build_npcc_consensus_maps(df)
+        assert sample_to_cc_id == {}
+        assert cc_id_to_reads == {}
+        assert cc_id_to_splint == {}
+
+    def test_build_maps_deduplicates_by_cc_id(self):
+        df = pd.DataFrame(
+            {
+                "sample_name": ["s1", "s2"],
+                "seq_tech": ["np-cc", "np-cc"],
+                "npcc_consensus_id": ["npcc_aaaaaaaaaaaa", "npcc_aaaaaaaaaaaa"],
+                "read_file": ["reads.fastq", "reads.fastq"],
+                "splint_file": ["splint.fa", "splint.fa"],
+            }
+        )
+        sample_to_cc_id, cc_id_to_reads, cc_id_to_splint = build_npcc_consensus_maps(df)
+        assert sample_to_cc_id == {"s1": "npcc_aaaaaaaaaaaa", "s2": "npcc_aaaaaaaaaaaa"}
+        assert cc_id_to_reads == {"npcc_aaaaaaaaaaaa": "reads.fastq"}
+        assert cc_id_to_splint == {"npcc_aaaaaaaaaaaa": "splint.fa"}
+
+    def test_build_maps_raises_on_inconsistent_inputs(self):
+        df = pd.DataFrame(
+            {
+                "sample_name": ["s1", "s2"],
+                "seq_tech": ["np-cc", "np-cc"],
+                "npcc_consensus_id": ["npcc_aaaaaaaaaaaa", "npcc_aaaaaaaaaaaa"],
+                "read_file": ["reads.fastq", "reads2.fastq"],
+                "splint_file": ["splint.fa", "splint.fa"],
+            }
+        )
+        with pytest.raises(ValueError, match="Inconsistent np-cc consensus inputs"):
+            build_npcc_consensus_maps(df)
+
 
 class TestGetReference:
 

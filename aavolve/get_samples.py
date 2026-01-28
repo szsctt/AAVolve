@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import re
+import hashlib
 
 PARENTDIR = 'out/references/parents'
 os.makedirs(PARENTDIR, exist_ok=True)
@@ -17,9 +18,24 @@ DEFAULT_TRIM = False
 DEFAULT_ANCHORS = 0
 DEFAULT_REQUIRE_END_TO_END_ALIGNMENT = False
 NON_PARENTAL_GROUP_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+NPCC_CONSENSUS_ID_PREFIX = "npcc"
+NPCC_CONSENSUS_ID_LEN = 12
 
 def get_name(filename):
     return os.path.splitext(os.path.basename(filename))[0]
+
+
+def npcc_consensus_id(read_file: str, splint_file: str) -> str:
+    """
+    Create a stable identifier for an R2C2 consensus job based on input files.
+
+    This allows de-duplicating the expensive C3POa consensus step when multiple samples
+    reuse the same (read_file, splint_file) inputs with different downstream parameters.
+    """
+    read_abs = os.path.abspath(str(read_file))
+    splint_abs = os.path.abspath(str(splint_file))
+    digest = hashlib.sha1(f"{read_abs}\0{splint_abs}".encode("utf-8")).hexdigest()  # nosec - not for security
+    return f"{NPCC_CONSENSUS_ID_PREFIX}_{digest[:NPCC_CONSENSUS_ID_LEN]}"
 
 def get_first_parent(filename):
     """
@@ -214,6 +230,17 @@ def check_data(samples):
                 raise ValueError(f"Minimum reps (column 'min_reps') must be an integer and at least 0: found value {row['min_reps']} in row {i}")
         else:
             samples.loc[i, 'min_reps'] = None
+
+    # R2C2 consensus de-duplication key (np-cc only).
+    # This is derived (not user-provided) so downstream rules can share expensive consensus work.
+    samples["npcc_consensus_id"] = [None] * len(samples)
+    for i, row in samples.iterrows():
+        if row["seq_tech"] != "np-cc":
+            continue
+        samples.loc[i, "npcc_consensus_id"] = npcc_consensus_id(
+            read_file=str(row["read_file"]),
+            splint_file=str(row["splint_file"]),
+        )
 
     # adapter trimming configuration
     if 'trim' not in samples.columns:
