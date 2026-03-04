@@ -313,7 +313,6 @@ def test_npcc_consensus_dedup_when_minreps_differs(tmp_path, snakefile, npcc_ded
             [f"out/c3poa_filt/{name}.fasta.gz" for name in npcc_samples["sample_name"].tolist()]
         )
 
-
 def test_consensus_not_performed_for_non_npcc(tmp_path, snakefile, np_only_config):
     """Test that consensus jobs are not created for non-np-cc samples."""
     dag_api = build_dag(

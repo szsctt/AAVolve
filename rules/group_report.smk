@@ -85,6 +85,7 @@ rule group_report:
     params:
         report_basename=lambda wildcards, output: output.tmp_notebook.split('/')[-1],
         report_dir = lambda wildcards, output: os.path.dirname(output.report),
+        deno_mem_mb=lambda wildcards: int(config.get("quarto_deno_max_old_space_size_mb", 4096)),
     shell:
         """
         set -euo pipefail
@@ -97,5 +98,6 @@ rule group_report:
 
         cd {params.report_dir}
         unset QUARTO_DENO DENO
+        export QUARTO_DENO_EXTRA_OPTIONS="--v8-flags=--max-old-space-size={params.deno_mem_mb}"
         quarto render {params.report_basename}
         """

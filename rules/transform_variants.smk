@@ -438,6 +438,7 @@ rule report:
         minimap2_params = lambda wildcards: get_column_by_sample(wildcards, samples, "minimap2_params") if "minimap2_params" in samples.columns else "",
         report_basename = lambda wildcards, output: os.path.basename(output.tmp_notebook),
         report_dir = lambda wildcards, output: os.path.dirname(output.report),
+        deno_mem_mb = lambda wildcards: int(config.get("quarto_deno_max_old_space_size_mb", 4096)),
     shell:
         """
         pwd
@@ -472,5 +473,6 @@ rule report:
 
         cd {params.report_dir}
         unset QUARTO_DENO DENO
+        export QUARTO_DENO_EXTRA_OPTIONS="--v8-flags=--max-old-space-size={params.deno_mem_mb}"
         quarto render {params.report_basename}
         """
