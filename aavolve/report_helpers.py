@@ -257,19 +257,26 @@ def print_unique_aa_reads(df_file, seq_type):
 #### variants ####
     
 
-def read_assigned_parents(filename):
+def read_assigned_parents(filename, max_rows=MAX_SEQS):
 
-    df = pd.read_csv(filename, delimiter='\t', nrows=MAX_SEQS)
+    df = pd.read_csv(filename, delimiter='\t', nrows=max_rows)
 
     return df
 
 
-def parent_heatmap(filename, parent_freq_file, color_dict=None, *, reserve_legend_space: bool = True):
+def parent_heatmap(
+    filename,
+    parent_freq_file,
+    color_dict=None,
+    *,
+    reserve_legend_space: bool = True,
+    max_rows=MAX_SEQS,
+):
 
     # https://chart-studio.plotly.com/~empet/15229/heatmap-with-a-discrete-colorscale/#/
 
     # read in data
-    df = read_assigned_parents(filename)
+    df = read_assigned_parents(filename, max_rows=max_rows)
 
     if len(df) == 0:
         print("No reads passing all filters.")
