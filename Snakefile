@@ -1,3 +1,4 @@
+import os
 import re
 
 from aavolve.get_samples import get_samples
@@ -11,6 +12,14 @@ from aavolve.utils import normalize_names
 
 
 samples = get_samples(config)
+
+# When running in single-sample mode (no samples CSV was provided), write one so
+# the group_manifest rule (which requires a CSV path) can still function.
+if 'samples' not in config:
+    _samples_csv = os.path.join("out", "generated_samples.csv")
+    os.makedirs(os.path.dirname(_samples_csv), exist_ok=True)
+    samples.to_csv(_samples_csv, index=False)
+    config['samples'] = _samples_csv
 
 sample_names = normalize_names(samples.sample_name)
 parent_names = normalize_names(samples.parent_name)
