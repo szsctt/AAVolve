@@ -31,3 +31,8 @@ jobs:
         name: Run snakemake
         run: snakemake --cores 1 --config samples=tests/data/config/test_samples.csv --use-apptainer
         shell: micromamba-shell {0}
+      - 
+        name: Run snakemake with 'quickstart' command
+        run: snakemake --cores 1 --use-apptainer --config read_file=tests/data/tests/data/reads/np-cc-aav2.fastq parent_file=tests/data/references/wtAAV2.fa seq_tech=np-cc sample_name=aav2-np-cc
+        shell: micromamba-shell {0}
+
